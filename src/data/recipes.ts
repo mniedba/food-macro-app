@@ -1,6 +1,5 @@
 import { Recipe } from '../types';
 
-// TODO: Expand with ~50 recipes
 export const recipes: Recipe[] = [
   {
     id: 'r1',
