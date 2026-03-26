@@ -94,4 +94,32 @@ export const foods: FoodItem[] = [
   { id: 'f84', name: 'Onion', category: 'vegetable', servingSize: '1/2 cup chopped (80g)', calories: 32, proteinG: 0.7, carbsG: 7.5, fatG: 0.1, tags: ['low-calorie'] },
   { id: 'f85', name: 'Garlic', category: 'vegetable', servingSize: '3 cloves (9g)', calories: 13, proteinG: 0.6, carbsG: 3, fatG: 0, tags: ['low-calorie'] },
   { id: 'f86', name: 'Beets', category: 'vegetable', servingSize: '1 medium (82g)', calories: 35, proteinG: 1.3, carbsG: 8, fatG: 0.1, tags: ['low-calorie'] },
+
+  // ─── DAIRY ────────────────────────────────────────────────────────────────
+  { id: 'f87', name: 'Whole Milk', category: 'dairy', servingSize: '1 cup (244ml)', calories: 149, proteinG: 8, carbsG: 12, fatG: 8, tags: ['breakfast'] },
+  { id: 'f88', name: 'Skim Milk', category: 'dairy', servingSize: '1 cup (244ml)', calories: 83, proteinG: 8, carbsG: 12, fatG: 0.2, tags: ['low-fat', 'breakfast'] },
+  { id: 'f89', name: 'Cheddar Cheese', category: 'dairy', servingSize: '1 oz (28g)', calories: 113, proteinG: 7, carbsG: 0.4, fatG: 9, tags: ['high-fat'] },
+  { id: 'f90', name: 'Mozzarella', category: 'dairy', servingSize: '1 oz (28g)', calories: 85, proteinG: 6, carbsG: 0.6, fatG: 6, tags: [] },
+  { id: 'f91', name: 'Parmesan', category: 'dairy', servingSize: '2 tbsp (10g)', calories: 43, proteinG: 3.8, carbsG: 0.4, fatG: 2.9, tags: [] },
+  { id: 'f92', name: 'Cream Cheese', category: 'dairy', servingSize: '2 tbsp (29g)', calories: 101, proteinG: 1.8, carbsG: 1.6, fatG: 10, tags: ['high-fat'] },
+  { id: 'f93', name: 'Feta Cheese', category: 'dairy', servingSize: '1 oz (28g)', calories: 75, proteinG: 4, carbsG: 1.2, fatG: 6, tags: [] },
+  { id: 'f94', name: 'Ricotta', category: 'dairy', servingSize: '1/4 cup (62g)', calories: 108, proteinG: 7, carbsG: 3.8, fatG: 8, tags: ['breakfast'] },
+  { id: 'f95', name: 'Almond Milk (unsweetened)', category: 'dairy', servingSize: '1 cup (240ml)', calories: 30, proteinG: 1, carbsG: 1, fatG: 2.5, tags: ['low-calorie', 'vegan', 'quick'] },
+  { id: 'f96', name: 'Oat Milk', category: 'dairy', servingSize: '1 cup (240ml)', calories: 120, proteinG: 3, carbsG: 16, fatG: 5, tags: ['vegan'] },
+  { id: 'f97', name: 'Kefir (low-fat)', category: 'dairy', servingSize: '1 cup (240ml)', calories: 104, proteinG: 10, carbsG: 11, fatG: 2.5, tags: ['high-protein', 'breakfast'] },
+
+  // ─── FATS & NUTS ───────────────────────────────────────────────────────────
+  { id: 'f98', name: 'Olive Oil', category: 'fat', servingSize: '1 tbsp (14ml)', calories: 119, proteinG: 0, carbsG: 0, fatG: 14, tags: ['high-fat'] },
+  { id: 'f99', name: 'Coconut Oil', category: 'fat', servingSize: '1 tbsp (14g)', calories: 121, proteinG: 0, carbsG: 0, fatG: 13.5, tags: ['high-fat'] },
+  { id: 'f100', name: 'Almonds', category: 'fat', servingSize: '1 oz (28g)', calories: 164, proteinG: 6, carbsG: 6, fatG: 14, tags: ['high-fat', 'snack'] },
+  { id: 'f101', name: 'Peanuts', category: 'fat', servingSize: '1 oz (28g)', calories: 161, proteinG: 7.3, carbsG: 4.6, fatG: 14, tags: ['high-fat', 'snack'] },
+  { id: 'f102', name: 'Peanut Butter', category: 'fat', servingSize: '2 tbsp (32g)', calories: 191, proteinG: 7, carbsG: 7, fatG: 16, tags: ['high-fat', 'high-protein', 'snack', 'quick'] },
+  { id: 'f103', name: 'Almond Butter', category: 'fat', servingSize: '2 tbsp (32g)', calories: 196, proteinG: 7, carbsG: 6, fatG: 18, tags: ['high-fat', 'snack'] },
+  { id: 'f104', name: 'Walnuts', category: 'fat', servingSize: '1 oz (28g)', calories: 185, proteinG: 4.3, carbsG: 3.9, fatG: 18, tags: ['high-fat', 'snack'] },
+  { id: 'f105', name: 'Cashews', category: 'fat', servingSize: '1 oz (28g)', calories: 157, proteinG: 5.2, carbsG: 8.6, fatG: 12, tags: ['high-fat', 'snack'] },
+  { id: 'f106', name: 'Chia Seeds', category: 'fat', servingSize: '1 tbsp (12g)', calories: 58, proteinG: 2, carbsG: 5, fatG: 3.7, tags: ['high-fat'] },
+  { id: 'f107', name: 'Ground Flaxseed', category: 'fat', servingSize: '1 tbsp (10g)', calories: 55, proteinG: 1.9, carbsG: 3, fatG: 4.3, tags: ['high-fat'] },
+  { id: 'f108', name: 'Dark Chocolate (85%)', category: 'fat', servingSize: '1 oz (28g)', calories: 170, proteinG: 2, carbsG: 9, fatG: 15, tags: ['high-fat', 'snack'] },
+  { id: 'f109', name: 'Pumpkin Seeds', category: 'fat', servingSize: '1 oz (28g)', calories: 151, proteinG: 9, carbsG: 5, fatG: 13, tags: ['high-fat', 'high-protein', 'snack'] },
+  { id: 'f110', name: 'Tahini', category: 'fat', servingSize: '2 tbsp (30g)', calories: 178, proteinG: 5, carbsG: 6, fatG: 16, tags: ['high-fat'] },
 ];
