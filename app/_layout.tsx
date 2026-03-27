@@ -1,11 +1,27 @@
-import React from 'react';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import React, { useEffect } from 'react';
+import { View, ActivityIndicator, StyleSheet, AppState } from 'react-native';
 import { Stack } from 'expo-router';
+import * as NavigationBar from 'expo-navigation-bar';
 import { useUserProfile } from '../src/hooks/useUserProfile';
 import { colors } from '../src/theme/colors';
 
 export default function RootLayout() {
   const { isLoading } = useUserProfile();
+
+  useEffect(() => {
+    const enableImmersive = () => {
+      NavigationBar.setVisibilityAsync('hidden');
+      NavigationBar.setBehaviorAsync('overlay-swipe');
+    };
+
+    enableImmersive();
+
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') enableImmersive();
+    });
+
+    return () => subscription.remove();
+  }, []);
 
   if (isLoading) {
     return (
