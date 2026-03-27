@@ -1,11 +1,13 @@
 import React, { useEffect } from 'react';
 import { Tabs, router } from 'expo-router';
 import { Text } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useUserProfile } from '../../src/hooks/useUserProfile';
 import { colors } from '../../src/theme/colors';
 
 export default function TabLayout() {
   const { isOnboarded, isLoading } = useUserProfile();
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     if (!isLoading && !isOnboarded) {
@@ -21,8 +23,8 @@ export default function TabLayout() {
           backgroundColor: colors.bgSecondary,
           borderTopColor: colors.border,
           borderTopWidth: 1,
-          height: 60,
-          paddingBottom: 8,
+          height: 60 + insets.bottom,
+          paddingBottom: insets.bottom + 8,
           paddingTop: 8,
         },
         tabBarActiveTintColor: colors.accent,

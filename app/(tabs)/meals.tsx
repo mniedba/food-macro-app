@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, FlatList, StyleSheet } from 'react-native';
+import { router } from 'expo-router';
 import { GradientHeader } from '../../src/components/GradientHeader';
 import { FoodCard } from '../../src/components/FoodCard';
 import { useUserProfile } from '../../src/hooks/useUserProfile';
@@ -81,9 +82,18 @@ export default function MealsScreen() {
       <FlatList
         data={(viewMode === 'foods' ? foods : recipes) as (FoodItem | Recipe)[]}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <FoodCard item={item} type={viewMode === 'foods' ? 'food' : 'recipe'} />
-        )}
+        renderItem={({ item }) =>
+          viewMode === 'recipes' ? (
+            <TouchableOpacity
+              activeOpacity={0.85}
+              onPress={() => router.push(`/recipe/${item.id}`)}
+            >
+              <FoodCard item={item} type="recipe" />
+            </TouchableOpacity>
+          ) : (
+            <FoodCard item={item} type="food" />
+          )
+        }
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
       />
