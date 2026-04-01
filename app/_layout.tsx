@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { View, ActivityIndicator, StyleSheet, AppState } from 'react-native';
 import { Stack } from 'expo-router';
 import * as NavigationBar from 'expo-navigation-bar';
+import { DailyLogProvider } from '../src/context/DailyLogContext';
 import { useUserProfile } from '../src/hooks/useUserProfile';
 import { colors } from '../src/theme/colors';
 
@@ -32,13 +33,19 @@ export default function RootLayout() {
   }
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="(tabs)" />
-      <Stack.Screen
-        name="onboarding"
-        options={{ presentation: 'fullScreenModal' }}
-      />
-    </Stack>
+    <DailyLogProvider>
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen
+          name="onboarding"
+          options={{ presentation: 'fullScreenModal' }}
+        />
+        <Stack.Screen
+          name="log-meal"
+          options={{ presentation: 'modal' }}
+        />
+      </Stack>
+    </DailyLogProvider>
   );
 }
 

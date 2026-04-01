@@ -57,3 +57,23 @@ export interface Recipe {
   tags: string[];
   goalAlignment: GoalType[];
 }
+
+export interface LogEntry {
+  id: string;                   // unique: Date.now().toString()
+  date: string;                 // 'YYYY-MM-DD'
+  itemId: string;
+  itemName: string;
+  itemType: 'food' | 'recipe';
+  servings: number;
+  caloriesPerServing: number;
+  proteinGPerServing: number;
+  carbsGPerServing: number;
+  fatGPerServing: number;
+}
+
+export interface DailyTotals {
+  calories: number;
+  proteinG: number;
+  carbsG: number;
+  fatG: number;
+}
