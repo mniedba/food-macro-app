@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { Tabs, router } from 'expo-router';
-import { Text } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useUserProfile } from '../../src/hooks/useUserProfile';
 import { colors } from '../../src/theme/colors';
@@ -39,21 +39,21 @@ export default function TabLayout() {
         name="index"
         options={{
           title: 'Dashboard',
-          tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 20 }}>\ud83d\udcca</Text>,
+          tabBarIcon: ({ color, size }) => <Ionicons name="grid-outline" size={size} color={color} />,
         }}
       />
       <Tabs.Screen
         name="meals"
         options={{
           title: 'Meals',
-          tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 20 }}>\ud83c\udf7d</Text>,
+          tabBarIcon: ({ color, size }) => <Ionicons name="restaurant-outline" size={size} color={color} />,
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
           title: 'Profile',
-          tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 20 }}>\ud83d\udc64</Text>,
+          tabBarIcon: ({ color, size }) => <Ionicons name="person-outline" size={size} color={color} />,
         }}
       />
     </Tabs>
