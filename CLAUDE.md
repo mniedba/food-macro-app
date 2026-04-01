@@ -12,6 +12,8 @@ Macro Fuel is an Android mobile app (APK) that helps users achieve their body ph
 - **Charts**: react-native-svg for circular macro progress rings
 - **Animations**: react-native-reanimated for smooth transitions and ring animations
 - **Gradients**: expo-linear-gradient for card and header backgrounds
+- **Icons**: @expo/vector-icons (Ionicons) for tab bar and UI icons
+- **System UI**: expo-navigation-bar for Android immersive mode (hides system nav bar)
 - **Build**: EAS Build (cloud) for APK generation — no local Android SDK required
 
 ### Project Initialization
@@ -29,11 +31,14 @@ npm install -D eas-cli
 ```
 food-macro-app/
 ├── app/                              # Expo Router file-based routing
-│   ├── _layout.tsx                   # Root layout: checks onboarding, renders tabs or wizard
+│   ├── _layout.tsx                   # Root layout: DailyLogProvider, immersive mode, tab/modal stack
 │   ├── onboarding.tsx                # Full-screen onboarding wizard (modal)
+│   ├── log-meal.tsx                  # Meal logging modal (browse + servings picker)
+│   ├── recipe/
+│   │   └── [id].tsx                  # Recipe detail screen (dynamic route)
 │   └── (tabs)/
-│       ├── _layout.tsx               # Bottom tab bar configuration
-│       ├── index.tsx                 # Dashboard screen (macro rings)
+│       ├── _layout.tsx               # Bottom tab bar configuration (Ionicons, safe area)
+│       ├── index.tsx                 # Dashboard screen (macro rings + daily log)
 │       ├── meals.tsx                 # Food & recipe suggestions screen
 │       └── profile.tsx               # User profile & settings screen
 ├── src/
@@ -44,13 +49,15 @@ food-macro-app/
 │   │   └── goalPlanner.ts            # Weekly deficit/surplus from goal + timeframe
 │   ├── components/
 │   │   ├── MacroRing.tsx             # Animated circular progress ring (SVG)
-│   │   ├── MacroDashboard.tsx        # Four-ring layout (calories, protein, carbs, fat)
+│   │   ├── MacroDashboard.tsx        # Four-ring layout showing consumed vs. target
 │   │   ├── ProfileForm.tsx           # Multi-step swipeable onboarding form
 │   │   ├── GoalSelector.tsx          # Goal weight + timeframe picker with live preview
 │   │   ├── ActivityPicker.tsx        # Activity level and workout type radio cards
 │   │   ├── FoodCard.tsx              # Individual food/recipe suggestion card
 │   │   ├── GradientHeader.tsx        # Reusable gradient header bar
 │   │   └── NumberInput.tsx           # Styled numeric input with unit toggle
+│   ├── context/
+│   │   └── DailyLogContext.tsx       # React context + provider for daily meal log state
 │   ├── data/
 │   │   ├── foods.ts                  # Embedded food database (~150-200 items)
 │   │   ├── recipes.ts               # Embedded recipe database (~50 recipes)
@@ -140,6 +147,26 @@ export interface Recipe {
   servings: number;
   tags: string[];
   goalAlignment: GoalType[];   // which goals this recipe suits
+}
+
+export interface LogEntry {
+  id: string;                   // unique: Date.now().toString()
+  date: string;                 // 'YYYY-MM-DD'
+  itemId: string;               // food or recipe id
+  itemName: string;
+  itemType: 'food' | 'recipe';
+  servings: number;
+  caloriesPerServing: number;   // stored at log time so display is stable
+  proteinGPerServing: number;
+  carbsGPerServing: number;
+  fatGPerServing: number;
+}
+
+export interface DailyTotals {
+  calories: number;
+  proteinG: number;
+  carbsG: number;
+  fatG: number;
 }
 ```
 
@@ -264,16 +291,20 @@ On mount, check AsyncStorage for existing `UserProfile`:
 - **No profile found** → render onboarding wizard (modal stack)
 - **Profile exists** → render tab navigator
 
+The entire stack is wrapped in `DailyLogProvider` so all screens share the same log state. Android immersive mode is enabled here via `expo-navigation-bar` (`setVisibilityAsync('hidden')` + `setBehaviorAsync('overlay-swipe')`), and re-applied on `AppState` foreground transitions since Android clears it on focus loss. The `log-meal` modal route is also registered in this stack.
+
 ### Tab 1: Dashboard (`app/(tabs)/index.tsx`)
 
-The home screen showing the user's daily macro targets at a glance.
+The home screen showing consumed macros vs. daily targets.
 
 **Layout:**
 - **Top**: Gradient header with app name and goal type badge (CUT / MAINTAIN / BULK)
-- **Center**: Large calorie ring (prominent, ~200px diameter) showing daily calorie target
-- **Below**: Row of three smaller rings for Protein (g), Carbs (g), Fat (g)
-- **Summary card**: Shows TDEE, daily adjustment, weekly weight change target
-- **Bottom**: "Update Goal" button linking to profile edit
+- **Center**: Large calorie ring showing consumed/target kcal; "X kcal remaining" label below
+- **Below rings**: Row of three smaller rings (Protein, Carbs, Fat) each with a "Xg left" / "Xg over" label
+- **Today's Log card**: Lists every logged entry for the day with name, servings, kcal, P/C/F, and a remove button. "Clear All" link when entries exist.
+- **Log a Meal button**: Opens the `log-meal` modal
+- **Daily Summary card**: Shows BMR, TDEE, daily calorie adjustment, weekly weight change target
+- **Update Goal button**: Links to profile edit
 
 ### Tab 2: Meal Ideas (`app/(tabs)/meals.tsx`)
 
@@ -282,8 +313,37 @@ Scrollable food and recipe suggestions personalized to the user's macro targets.
 **Layout:**
 - **Top**: Horizontal scrollable filter chips: "All", "High Protein", "Low Carb", "Quick Prep", "Meal Prep", "Breakfast", "Lunch", "Dinner", "Snack"
 - **Toggle**: Switch between "Foods" and "Recipes" view
-- **List**: Vertical scrollable list of FoodCard / RecipeCard components
+- **List**: Vertical scrollable list of FoodCard components
 - Each card shows: name, macro breakdown mini-bar (colored segments), calories per serving, relevant tags
+- **Recipe cards are tappable**: navigates to `app/recipe/[id].tsx` for full detail
+
+### Recipe Detail (`app/recipe/[id].tsx`)
+
+Full-screen detail view for a single recipe, accessed by tapping a recipe card in the Meals tab.
+
+**Layout:**
+- Back button (← Back)
+- Recipe name and description
+- Goal alignment badges (CUT / MAINTAIN / BULK, color-coded)
+- Stats row: prep time, servings, total calories
+- Macro color bar + P/C/F gram breakdown
+- Ingredients bulleted list
+- Numbered instructions
+- Tags
+
+### Log Meal Modal (`app/log-meal.tsx`)
+
+Full-screen modal for browsing and logging a food item or recipe to the daily log.
+
+**Layout:**
+- Header: "Cancel" (left), "Log a Meal" title (center)
+- Foods / Recipes toggle
+- Filter chips (same set as Meals tab)
+- Item list — tapping an item selects it (highlighted border)
+- **Bottom selection panel** (appears when an item is selected):
+  - Item name + live macro preview (updates as servings change)
+  - Servings picker: `[−]  N servings  [+]` (0.5 increments, min 0.5)
+  - "Add to Today's Log" button — calls `addEntry` from `DailyLogContext` and dismisses
 
 ### Tab 3: Profile (`app/(tabs)/profile.tsx`)
 
@@ -512,6 +572,7 @@ export const spacing = {
 const STORAGE_KEYS = {
   USER_PROFILE: '@macrofuel/user_profile',
   ONBOARDING_COMPLETE: '@macrofuel/onboarding_complete',
+  DAILY_LOG_PREFIX: '@macrofuel/daily_log_',  // + 'YYYY-MM-DD' suffix
 } as const;
 ```
 
@@ -522,7 +583,27 @@ Thin wrapper over AsyncStorage with JSON serialization:
 - `loadProfile(): Promise<UserProfile | null>`
 - `setOnboardingComplete(): Promise<void>`
 - `isOnboardingComplete(): Promise<boolean>`
-- `clearAllData(): Promise<void>`
+- `clearAllData(): Promise<void>` — also clears today's daily log
+- `saveDailyLog(date: string, entries: LogEntry[]): Promise<void>`
+- `loadDailyLog(date: string): Promise<LogEntry[]>`
+- `clearDailyLog(date: string): Promise<void>`
+
+### Daily Log Context (`src/context/DailyLogContext.tsx`)
+
+React context that holds today's meal log state and is the single source of truth shared across the dashboard and log-meal modal. Wrap the app in `<DailyLogProvider>` (done in `app/_layout.tsx`).
+
+```typescript
+useDailyLog(): {
+  entries: LogEntry[];
+  totals: DailyTotals;          // memoized sum of all entries
+  addEntry: (entry: Omit<LogEntry, 'id' | 'date'>) => void;
+  removeEntry: (id: string) => void;
+  clearLog: () => void;
+  isLoading: boolean;
+}
+```
+
+Loads from AsyncStorage on mount using today's date (`YYYY-MM-DD`). All mutations persist immediately. Entries automatically start fresh the next calendar day because the key is date-scoped.
 
 ### Custom Hooks
 
@@ -626,16 +707,19 @@ npx expo lint
 
 ---
 
-## Implementation Priority Order
+## What's Been Built
 
-1. **Project setup**: Initialize Expo, install dependencies, configure app.json/eas.json
-2. **Types & theme**: Define all interfaces, colors, typography, spacing
-3. **Algorithms**: Implement BMR, TDEE, goal planner, macro calculator with unit tests
-4. **Storage & hooks**: AsyncStorage wrapper, useUserProfile, useMacroTargets
-5. **Onboarding wizard**: Multi-step form with all user inputs
-6. **Dashboard screen**: Macro rings with animated progress
-7. **Food/recipe data**: Build out the embedded databases
-8. **Meals screen**: Food suggestion cards with filtering
-9. **Profile screen**: Display and edit profile
-10. **Polish**: Animations, gradients, responsive layout for tablets
-11. **Build**: Configure EAS and generate APK
+All core features are implemented and shipped:
+
+1. **Project setup** — Expo SDK 55, TypeScript, Expo Router, EAS build config
+2. **Types & theme** — All interfaces, color palette, typography, spacing scale
+3. **Algorithms** — BMR (Mifflin-St Jeor), TDEE, goal planner, macro split calculator
+4. **Storage & hooks** — AsyncStorage wrapper, useUserProfile, useMacroTargets, daily log persistence
+5. **Onboarding wizard** — 5-step form: basics → measurements → activity → goal → results
+6. **Dashboard** — Animated macro rings (consumed vs. target), Today's Log card, Log a Meal button
+7. **Food/recipe data** — ~110 foods and ~26 recipes embedded
+8. **Meals screen** — Food/recipe cards with filter chips; recipe cards navigate to detail screen
+9. **Recipe detail screen** — Full ingredients, instructions, macros, goal badges
+10. **Meal logging** — Log Meal modal with browsing, servings picker, live macro preview
+11. **Profile screen** — Display and edit profile, reset data, unit toggle
+12. **Android system UI** — Immersive mode hides system nav bar; swipe up to reveal temporarily
