@@ -33,7 +33,7 @@ food-macro-app/
 ├── app/                              # Expo Router file-based routing
 │   ├── _layout.tsx                   # Root layout: DailyLogProvider, immersive mode, tab/modal stack
 │   ├── onboarding.tsx                # Full-screen onboarding wizard (modal)
-│   ├── log-meal.tsx                  # Meal logging modal (browse + servings picker)
+│   ├── log-meal.tsx                  # Meal logging modal (browse + servings picker + custom entry form)
 │   ├── recipe/
 │   │   └── [id].tsx                  # Recipe detail screen (dynamic route)
 │   └── (tabs)/
@@ -346,17 +346,26 @@ Full-screen detail view for a single recipe, accessed by tapping a recipe card i
 
 ### Log Meal Modal (`app/log-meal.tsx`)
 
-Full-screen modal for browsing and logging a food item or recipe to the daily log.
+Full-screen modal for browsing and logging a food item or recipe to the daily log, or entering a completely custom meal by hand.
 
 **Layout:**
 - Header: "Cancel" (left), "Log a Meal" title (center)
-- Foods / Recipes toggle
+- Foods / Recipes / Custom toggle (three buttons)
+
+**Foods and Recipes modes:**
 - Filter chips (same set as Meals tab)
 - Item list — tapping an item selects it (highlighted border)
 - **Bottom selection panel** (appears when an item is selected):
   - Item name + live macro preview (updates as servings change)
   - Servings picker: `[−]  N servings  [+]` (0.5 increments, min 0.5)
   - "Add to Today's Log" button — calls `addEntry` from `DailyLogContext` and dismisses
+
+**Custom mode** (filter chips and item list are hidden):
+- Meal Name field (required text input)
+- Calories field (required numeric input)
+- Protein / Carbs / Fat fields side-by-side (numeric, default 0 if blank), each labelled in its macro accent colour
+- Live macro preview row appears once a calorie value is typed
+- "Add to Today's Log" button — validates inputs, logs the entry with `servings: 1` and the entered values as per-serving macros, then dismisses
 
 ### Tab 3: Progress (`app/(tabs)/progress.tsx`)
 
