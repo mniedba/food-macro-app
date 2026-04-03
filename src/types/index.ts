@@ -16,6 +16,15 @@ export interface UserProfile {
   goalTimeframeWeeks: number;
   weightUnit: WeightUnit;
   heightUnit: HeightUnit;
+  goalStartDate?: string;       // 'YYYY-MM-DD' — when the current goal period began
+  goalStartWeightKg?: number;   // body weight (kg) recorded at goal start
+}
+
+export interface WeightEntry {
+  id: string;
+  date: string;       // 'YYYY-MM-DD'
+  weightKg: number;
+  note?: string;
 }
 
 export interface MacroTargets {
