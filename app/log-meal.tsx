@@ -4,6 +4,11 @@ import {
   Text,
   FlatList,
   TouchableOpacity,
+  TextInput,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+  Alert,
   StyleSheet,
   SafeAreaView,
 } from 'react-native';
@@ -35,10 +40,17 @@ export default function LogMealScreen() {
   const targets = useMacroTargets(profile);
   const { addEntry } = useDailyLog();
 
-  const [viewMode, setViewMode] = useState<'foods' | 'recipes'>('foods');
+  const [viewMode, setViewMode] = useState<'foods' | 'recipes' | 'custom'>('foods');
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
   const [selected, setSelected] = useState<SelectedItem | null>(null);
   const [servings, setServings] = useState(1);
+
+  // Custom meal form state
+  const [customName, setCustomName] = useState('');
+  const [customCal, setCustomCal] = useState('');
+  const [customProtein, setCustomProtein] = useState('');
+  const [customCarbs, setCustomCarbs] = useState('');
+  const [customFat, setCustomFat] = useState('');
 
   const { foods, recipes } = useFoodSuggestions(
     targets,
@@ -103,6 +115,35 @@ export default function LogMealScreen() {
     setServings((prev) => Math.max(0.5, Math.round((prev + delta) * 2) / 2));
   }
 
+  function handleAddCustom() {
+    const name = customName.trim();
+    const cal = parseFloat(customCal);
+    const protein = parseFloat(customProtein) || 0;
+    const carbs = parseFloat(customCarbs) || 0;
+    const fat = parseFloat(customFat) || 0;
+
+    if (!name) {
+      Alert.alert('Name required', 'Please enter a name for this meal.');
+      return;
+    }
+    if (isNaN(cal) || cal <= 0) {
+      Alert.alert('Invalid calories', 'Please enter a positive calorie amount.');
+      return;
+    }
+
+    addEntry({
+      itemId: `custom_${Date.now()}`,
+      itemName: name,
+      itemType: 'food',
+      servings: 1,
+      caloriesPerServing: Math.round(cal),
+      proteinGPerServing: Math.round(protein),
+      carbsGPerServing: Math.round(carbs),
+      fatGPerServing: Math.round(fat),
+    });
+    router.back();
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
@@ -114,70 +155,180 @@ export default function LogMealScreen() {
         <View style={styles.cancelBtn} />
       </View>
 
-      {/* Foods / Recipes toggle */}
+      {/* Foods / Recipes / Custom toggle */}
       <View style={styles.toggleRow}>
-        {(['foods', 'recipes'] as const).map((mode) => (
+        {(['foods', 'recipes', 'custom'] as const).map((mode) => (
           <TouchableOpacity
             key={mode}
             style={[styles.toggleBtn, viewMode === mode && styles.toggleBtnActive]}
             onPress={() => { setViewMode(mode); setSelected(null); }}
           >
             <Text style={[styles.toggleText, viewMode === mode && styles.toggleTextActive]}>
-              {mode === 'foods' ? 'Foods' : 'Recipes'}
+              {mode === 'foods' ? 'Foods' : mode === 'recipes' ? 'Recipes' : 'Custom'}
             </Text>
           </TouchableOpacity>
         ))}
       </View>
 
-      {/* Filter chips */}
-      <FlatList
-        horizontal
-        data={FILTERS}
-        keyExtractor={(f) => f}
-        showsHorizontalScrollIndicator={false}
-        style={styles.filterRow}
-        contentContainerStyle={styles.filterContent}
-        renderItem={({ item: f }) => (
-          <TouchableOpacity
-            style={[
-              styles.filterChip,
-              (activeFilter === f || (f === 'All' && !activeFilter)) && styles.filterChipActive,
-            ]}
-            onPress={() => setActiveFilter(f === 'All' ? null : f)}
+      {viewMode === 'custom' ? (
+        /* ── Custom meal entry form ── */
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <ScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={styles.customForm}
+            keyboardShouldPersistTaps="handled"
           >
-            <Text style={[
-              styles.filterText,
-              (activeFilter === f || (f === 'All' && !activeFilter)) && styles.filterTextActive,
-            ]}>
-              {f}
+            <Text style={styles.customFormTitle}>Enter Meal Details</Text>
+            <Text style={styles.customFormSubtitle}>
+              Log any meal by entering its name and nutrition info directly.
             </Text>
-          </TouchableOpacity>
-        )}
-      />
 
-      {/* Item list */}
-      <FlatList
-        data={listData}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={[styles.list, selected && styles.listWithPanel]}
-        showsVerticalScrollIndicator={false}
-        renderItem={({ item }) => {
-          const type = viewMode === 'foods' ? 'food' : 'recipe';
-          const isSelected = selected?.item.id === item.id;
-          return (
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={() => handleSelectItem(item, type)}
-              style={[styles.cardWrapper, isSelected && styles.cardWrapperSelected]}
-            >
-              <FoodCard item={item} type={type} />
+            <Text style={styles.fieldLabel}>Meal Name *</Text>
+            <TextInput
+              style={styles.fieldInput}
+              value={customName}
+              onChangeText={setCustomName}
+              placeholder="e.g. Chipotle burrito bowl"
+              placeholderTextColor={colors.textMuted}
+              returnKeyType="next"
+            />
+
+            <Text style={styles.fieldLabel}>Calories (kcal) *</Text>
+            <TextInput
+              style={styles.fieldInput}
+              value={customCal}
+              onChangeText={setCustomCal}
+              placeholder="e.g. 650"
+              placeholderTextColor={colors.textMuted}
+              keyboardType="decimal-pad"
+              returnKeyType="next"
+            />
+
+            <View style={styles.macroRow}>
+              <View style={styles.macroField}>
+                <Text style={[styles.fieldLabel, { color: colors.protein }]}>Protein (g)</Text>
+                <TextInput
+                  style={styles.fieldInput}
+                  value={customProtein}
+                  onChangeText={setCustomProtein}
+                  placeholder="0"
+                  placeholderTextColor={colors.textMuted}
+                  keyboardType="decimal-pad"
+                  returnKeyType="next"
+                />
+              </View>
+              <View style={styles.macroField}>
+                <Text style={[styles.fieldLabel, { color: colors.carbs }]}>Carbs (g)</Text>
+                <TextInput
+                  style={styles.fieldInput}
+                  value={customCarbs}
+                  onChangeText={setCustomCarbs}
+                  placeholder="0"
+                  placeholderTextColor={colors.textMuted}
+                  keyboardType="decimal-pad"
+                  returnKeyType="next"
+                />
+              </View>
+              <View style={styles.macroField}>
+                <Text style={[styles.fieldLabel, { color: colors.fats }]}>Fat (g)</Text>
+                <TextInput
+                  style={styles.fieldInput}
+                  value={customFat}
+                  onChangeText={setCustomFat}
+                  placeholder="0"
+                  placeholderTextColor={colors.textMuted}
+                  keyboardType="decimal-pad"
+                  returnKeyType="done"
+                />
+              </View>
+            </View>
+
+            {/* Live preview */}
+            {customCal !== '' && (
+              <View style={styles.customPreview}>
+                <Text style={[styles.panelMacro, { color: colors.calories }]}>
+                  {Math.round(parseFloat(customCal) || 0)} kcal
+                </Text>
+                <Text style={[styles.panelMacro, { color: colors.protein }]}>
+                  P {Math.round(parseFloat(customProtein) || 0)}g
+                </Text>
+                <Text style={[styles.panelMacro, { color: colors.carbs }]}>
+                  C {Math.round(parseFloat(customCarbs) || 0)}g
+                </Text>
+                <Text style={[styles.panelMacro, { color: colors.fats }]}>
+                  F {Math.round(parseFloat(customFat) || 0)}g
+                </Text>
+              </View>
+            )}
+
+            <TouchableOpacity onPress={handleAddCustom} style={styles.addBtnWrapper}>
+              <LinearGradient
+                colors={[colors.accent, colors.accentGradientEnd]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.addBtn}
+              >
+                <Text style={styles.addBtnText}>Add to Today's Log</Text>
+              </LinearGradient>
             </TouchableOpacity>
-          );
-        }}
-      />
+          </ScrollView>
+        </KeyboardAvoidingView>
+      ) : (
+        <>
+          {/* Filter chips */}
+          <FlatList
+            horizontal
+            data={FILTERS}
+            keyExtractor={(f) => f}
+            showsHorizontalScrollIndicator={false}
+            style={styles.filterRow}
+            contentContainerStyle={styles.filterContent}
+            renderItem={({ item: f }) => (
+              <TouchableOpacity
+                style={[
+                  styles.filterChip,
+                  (activeFilter === f || (f === 'All' && !activeFilter)) && styles.filterChipActive,
+                ]}
+                onPress={() => setActiveFilter(f === 'All' ? null : f)}
+              >
+                <Text style={[
+                  styles.filterText,
+                  (activeFilter === f || (f === 'All' && !activeFilter)) && styles.filterTextActive,
+                ]}>
+                  {f}
+                </Text>
+              </TouchableOpacity>
+            )}
+          />
 
-      {/* Bottom selection panel */}
-      {selected && preview && (
+          {/* Item list */}
+          <FlatList
+            data={listData}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={[styles.list, selected && styles.listWithPanel]}
+            showsVerticalScrollIndicator={false}
+            renderItem={({ item }) => {
+              const type = viewMode === 'foods' ? 'food' : 'recipe';
+              const isSelected = selected?.item.id === item.id;
+              return (
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={() => handleSelectItem(item, type)}
+                  style={[styles.cardWrapper, isSelected && styles.cardWrapperSelected]}
+                >
+                  <FoodCard item={item} type={type} />
+                </TouchableOpacity>
+              );
+            }}
+          />
+        </>
+      )}
+
+      {/* Bottom selection panel (Foods / Recipes mode only) */}
+      {viewMode !== 'custom' && selected && preview && (
         <View style={styles.panel}>
           <Text style={styles.panelName} numberOfLines={1}>{selected.item.name}</Text>
 
@@ -370,5 +521,54 @@ const styles = StyleSheet.create({
   addBtnText: {
     ...typography.bodyBold,
     color: colors.textPrimary,
+  },
+  customForm: {
+    paddingHorizontal: spacing.screenPadding,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.xxl,
+  },
+  customFormTitle: {
+    ...typography.h3,
+    color: colors.textPrimary,
+    marginBottom: spacing.xs,
+  },
+  customFormSubtitle: {
+    ...typography.caption,
+    color: colors.textMuted,
+    marginBottom: spacing.lg,
+  },
+  fieldLabel: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    fontWeight: '600',
+    marginBottom: spacing.xs,
+  },
+  fieldInput: {
+    backgroundColor: colors.bgInput,
+    borderRadius: spacing.buttonRadius,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 12,
+    color: colors.textPrimary,
+    ...typography.body,
+    marginBottom: spacing.md,
+  },
+  macroRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  macroField: {
+    flex: 1,
+  },
+  customPreview: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    backgroundColor: colors.bgCard,
+    borderRadius: spacing.buttonRadius,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.md,
+    marginBottom: spacing.lg,
   },
 });
