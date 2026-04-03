@@ -249,7 +249,12 @@ export function ProfileForm({ initialProfile, onSave }: ProfileFormProps) {
         return (
           <View>
             <Text style={styles.stepTitle}>Your Daily Targets</Text>
-            {macroTargets && <MacroDashboard targets={macroTargets} />}
+            {macroTargets && (
+              <MacroDashboard
+                targets={macroTargets}
+                consumed={{ calories: 0, proteinG: 0, carbsG: 0, fatG: 0 }}
+              />
+            )}
           </View>
         );
       default:
