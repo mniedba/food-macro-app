@@ -7,15 +7,24 @@ export type HeightUnit = 'in' | 'cm';
 
 export interface UserProfile {
   sex: Sex;
-  heightCm: number;
-  weightKg: number;
+  heightIn: number;             // always stored in inches internally
+  weightLbs: number;            // always stored in lbs internally
   age: number;
   activityLevel: ActivityLevel;
   workoutType: WorkoutType;
-  goalWeightKg: number;
-  goalTimeframeWeeks: number;
-  weightUnit: WeightUnit;
-  heightUnit: HeightUnit;
+  goalWeightLbs: number;
+  goalTimeframeWeeks: number;   // 4-52 weeks
+  weightUnit: WeightUnit;       // display preference
+  heightUnit: HeightUnit;       // display preference
+  goalStartDate?: string;       // 'YYYY-MM-DD' — when the current goal period began
+  goalStartWeightLbs?: number;  // body weight (lbs) recorded at goal start
+}
+
+export interface WeightEntry {
+  id: string;
+  date: string;       // 'YYYY-MM-DD'
+  weightLbs: number;
+  note?: string;
 }
 
 export interface MacroTargets {
@@ -24,7 +33,7 @@ export interface MacroTargets {
   carbsGrams: number;
   fatGrams: number;
   goalType: GoalType;
-  weeklyWeightChangeKg: number;
+  weeklyWeightChangeLbs: number;
   dailyCalorieAdjustment: number;
   bmr: number;
   tdee: number;
@@ -34,12 +43,12 @@ export interface FoodItem {
   id: string;
   name: string;
   category: 'protein' | 'carb' | 'fat' | 'vegetable' | 'fruit' | 'dairy' | 'grain';
-  servingSize: string;
+  servingSize: string;         // e.g., "100g", "1 cup", "1 large"
   calories: number;
   proteinG: number;
   carbsG: number;
   fatG: number;
-  tags: string[];
+  tags: string[];              // e.g., ['high-protein', 'low-carb', 'meal-prep', 'quick']
 }
 
 export interface Recipe {
@@ -47,25 +56,25 @@ export interface Recipe {
   name: string;
   description: string;
   prepTimeMin: number;
-  ingredients: string[];
-  instructions: string[];
+  ingredients: string[];       // human-readable ingredient list
+  instructions: string[];      // step-by-step instructions
   totalCalories: number;
   totalProteinG: number;
   totalCarbsG: number;
   totalFatG: number;
   servings: number;
   tags: string[];
-  goalAlignment: GoalType[];
+  goalAlignment: GoalType[];   // which goals this recipe suits
 }
 
 export interface LogEntry {
   id: string;                   // unique: Date.now().toString()
   date: string;                 // 'YYYY-MM-DD'
-  itemId: string;
+  itemId: string;               // food or recipe id
   itemName: string;
   itemType: 'food' | 'recipe';
   servings: number;
-  caloriesPerServing: number;
+  caloriesPerServing: number;   // stored at log time so display is stable
   proteinGPerServing: number;
   carbsGPerServing: number;
   fatGPerServing: number;

@@ -2,6 +2,10 @@ import { useState, useEffect, useCallback } from 'react';
 import { UserProfile } from '../types';
 import { saveProfile as storageSave, loadProfile, setOnboardingComplete, isOnboardingComplete } from '../utils/storage';
 
+function todayString(): string {
+  return new Date().toISOString().split('T')[0];
+}
+
 export function useUserProfile() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -20,11 +24,38 @@ export function useUserProfile() {
   }, []);
 
   const saveUserProfile = useCallback(async (newProfile: UserProfile) => {
-    await storageSave(newProfile);
-    await setOnboardingComplete();
-    setProfile(newProfile);
-    setIsOnboarded(true);
-  }, []);
+    let profileToSave: UserProfile = { ...newProfile };
 
-  return { profile, saveProfile: saveUserProfile, isLoading, isOnboarded };
+    if (!profile?.goalStartDate) {
+      // First save (onboarding) — stamp goal start date and starting weight
+      profileToSave.goalStartDate = todayString();
+      profileToSave.goalStartWeightLbs = newProfile.weightLbs;
+    } else if (
+      profile.goalWeightLbs !== newProfile.goalWeightLbs ||
+      profile.goalTimeframeWeeks !== newProfile.goalTimeframeWeeks
+    ) {
+      // Goal target or timeframe changed — restart the goal period
+      profileToSave.goalStartDate = todayString();
+      profileToSave.goalStartWeightLbs = newProfile.weightLbs;
+    }
+
+    await storageSave(profileToSave);
+    await setOnboardingComplete();
+    setProfile(profileToSave);
+    setIsOnboarded(true);
+  }, [profile]);
+
+  // Explicitly restart the goal period (e.g. from Profile screen "Start New Goal")
+  const restartGoal = useCallback(async (currentWeightLbs?: number) => {
+    if (!profile) return;
+    const updated: UserProfile = {
+      ...profile,
+      goalStartDate: todayString(),
+      goalStartWeightLbs: currentWeightLbs ?? profile.weightLbs,
+    };
+    await storageSave(updated);
+    setProfile(updated);
+  }, [profile]);
+
+  return { profile, saveProfile: saveUserProfile, restartGoal, isLoading, isOnboarded };
 }

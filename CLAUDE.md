@@ -33,13 +33,14 @@ food-macro-app/
 ├── app/                              # Expo Router file-based routing
 │   ├── _layout.tsx                   # Root layout: DailyLogProvider, immersive mode, tab/modal stack
 │   ├── onboarding.tsx                # Full-screen onboarding wizard (modal)
-│   ├── log-meal.tsx                  # Meal logging modal (browse + servings picker)
+│   ├── log-meal.tsx                  # Meal logging modal (browse + servings picker + custom entry form)
 │   ├── recipe/
 │   │   └── [id].tsx                  # Recipe detail screen (dynamic route)
 │   └── (tabs)/
 │       ├── _layout.tsx               # Bottom tab bar configuration (Ionicons, safe area)
-│       ├── index.tsx                 # Dashboard screen (macro rings + daily log)
+│       ├── index.tsx                 # Dashboard screen (macro rings + daily log + progress mini-card)
 │       ├── meals.tsx                 # Food & recipe suggestions screen
+│       ├── progress.tsx              # Goal progress, weight log, calorie history
 │       └── profile.tsx               # User profile & settings screen
 ├── src/
 │   ├── algorithms/
@@ -64,9 +65,11 @@ food-macro-app/
 │   │   ├── activityMultipliers.ts    # TDEE multiplier constants
 │   │   └── macroPresets.ts           # Macro ratio presets by goal × workout type
 │   ├── hooks/
-│   │   ├── useUserProfile.ts         # Read/write user profile from AsyncStorage
+│   │   ├── useUserProfile.ts         # Read/write user profile; stamps goalStartDate on save
 │   │   ├── useMacroTargets.ts        # Derived macro targets from profile + goal
-│   │   └── useFoodSuggestions.ts     # Filter/score foods matching macro targets
+│   │   ├── useFoodSuggestions.ts     # Filter/score foods matching macro targets
+│   │   ├── useWeightHistory.ts       # CRUD for WeightEntry records (AsyncStorage-backed)
+│   │   └── useGoalProgress.ts        # Goal timeline, expected vs. actual weight, suggestions
 │   ├── theme/
 │   │   ├── colors.ts                 # Color palette constants
 │   │   ├── typography.ts             # Font sizes and weights
@@ -98,15 +101,24 @@ export type HeightUnit = 'in' | 'cm';
 
 export interface UserProfile {
   sex: Sex;
-  heightCm: number;           // always stored in cm internally
-  weightKg: number;           // always stored in kg internally
+  heightIn: number;            // always stored in total inches internally
+  weightLbs: number;           // always stored in lbs internally
   age: number;
   activityLevel: ActivityLevel;
   workoutType: WorkoutType;
-  goalWeightKg: number;
+  goalWeightLbs: number;
   goalTimeframeWeeks: number;  // 4-52 weeks
   weightUnit: WeightUnit;      // display preference
   heightUnit: HeightUnit;      // display preference
+  goalStartDate?: string;      // 'YYYY-MM-DD' — stamped on first save; resets when goal target/timeframe changes
+  goalStartWeightLbs?: number; // body weight (lbs) recorded at goal start
+}
+
+export interface WeightEntry {
+  id: string;
+  date: string;       // 'YYYY-MM-DD'
+  weightLbs: number;
+  note?: string;
 }
 
 export interface MacroTargets {
@@ -115,7 +127,7 @@ export interface MacroTargets {
   carbsGrams: number;
   fatGrams: number;
   goalType: GoalType;
-  weeklyWeightChangeKg: number;
+  weeklyWeightChangeLbs: number;
   dailyCalorieAdjustment: number;
   bmr: number;
   tdee: number;
@@ -176,14 +188,14 @@ export interface DailyTotals {
 
 ### 1. BMR — Mifflin-St Jeor Equation (`src/algorithms/bmr.ts`)
 
-The gold standard for estimating Basal Metabolic Rate:
+The gold standard for estimating Basal Metabolic Rate, expressed in imperial units:
 
 ```
-Male:   BMR = (10 × weightKg) + (6.25 × heightCm) - (5 × age) + 5
-Female: BMR = (10 × weightKg) + (6.25 × heightCm) - (5 × age) - 161
+Male:   BMR = (4.536 × weightLbs) + (12.7 × heightIn) - (5 × age) + 5
+Female: BMR = (4.536 × weightLbs) + (12.7 × heightIn) - (5 × age) - 161
 ```
 
-**Function**: `calculateBMR(sex: Sex, weightKg: number, heightCm: number, age: number): number`
+**Function**: `calculateBMR(sex: Sex, weightLbs: number, heightIn: number, age: number): number`
 
 ### 2. TDEE — Total Daily Energy Expenditure (`src/algorithms/tdee.ts`)
 
@@ -215,11 +227,11 @@ Multiply BMR by activity factor, then apply workout-type adjustment:
 Derives daily caloric adjustment from the user's goal:
 
 ```
-totalWeightChangeKg = goalWeightKg - currentWeightKg
-weeklyChangeKg = totalWeightChangeKg / timeframeWeeks
+totalWeightChangeLbs = goalWeightLbs - currentWeightLbs
+weeklyChangeLbs = totalWeightChangeLbs / timeframeWeeks
 
-// 1 kg body weight ≈ 7700 kcal
-dailyCalorieAdjustment = (weeklyChangeKg × 7700) / 7
+// 1 lb body weight ≈ 3500 kcal
+dailyCalorieAdjustment = (weeklyChangeLbs × 3500) / 7
 
 // Safety clamp: max deficit -1000 kcal/day, max surplus +500 kcal/day
 dailyCalorieAdjustment = clamp(dailyCalorieAdjustment, -1000, 500)
@@ -228,11 +240,11 @@ targetCalories = tdee + dailyCalorieAdjustment
 ```
 
 **Goal Type Derivation**:
-- `goalWeightKg < currentWeightKg` → **cut**
-- `goalWeightKg === currentWeightKg` (within ±0.5kg) → **maintain**
-- `goalWeightKg > currentWeightKg` → **bulk**
+- `goalWeightLbs < currentWeightLbs - 1.1` → **cut**
+- within ±1.1 lbs → **maintain**
+- `goalWeightLbs > currentWeightLbs + 1.1` → **bulk**
 
-**Function**: `planGoal(currentWeightKg: number, goalWeightKg: number, timeframeWeeks: number, tdee: number): { targetCalories: number, goalType: GoalType, weeklyChangeKg: number, dailyCalorieAdjustment: number }`
+**Function**: `planGoal(currentWeightLbs: number, goalWeightLbs: number, timeframeWeeks: number, tdee: number): { targetCalories: number, goalType: GoalType, weeklyChangeLbs: number, dailyCalorieAdjustment: number }`
 
 ### 4. Macro Split Calculator (`src/algorithms/macros.ts`)
 
@@ -273,9 +285,9 @@ carbsGrams   = (targetCalories × carbsPct) / 4
 fatGrams     = (targetCalories × fatPct) / 9
 ```
 
-**Protein floor rule**: For weightlifters, enforce minimum 1.6g protein per kg body weight. If the percentage-based calculation falls below this floor, set protein to the floor value and redistribute the remaining calories proportionally between carbs and fat.
+**Protein floor rule**: For weightlifters, enforce minimum 0.73g protein per lb body weight (≈1.6g/kg). If the percentage-based calculation falls below this floor, set protein to the floor value and redistribute the remaining calories proportionally between carbs and fat.
 
-**Function**: `calculateMacros(targetCalories: number, goalType: GoalType, workoutType: WorkoutType, weightKg: number): MacroTargets`
+**Function**: `calculateMacros(targetCalories: number, goalType: GoalType, workoutType: WorkoutType, weightLbs: number, bmr: number, tdee: number, weeklyWeightChangeLbs: number, dailyCalorieAdjustment: number): MacroTargets`
 
 ---
 
@@ -283,7 +295,7 @@ fatGrams     = (targetCalories × fatPct) / 9
 
 ### Navigation Architecture
 
-Three-tab bottom navigator using Expo Router file-based routing. First-time users see a full-screen onboarding wizard before accessing tabs.
+Four-tab bottom navigator using Expo Router file-based routing. First-time users see a full-screen onboarding wizard before accessing tabs.
 
 ### Root Layout (`app/_layout.tsx`)
 
@@ -301,6 +313,7 @@ The home screen showing consumed macros vs. daily targets.
 - **Top**: Gradient header with app name and goal type badge (CUT / MAINTAIN / BULK)
 - **Center**: Large calorie ring showing consumed/target kcal; "X kcal remaining" label below
 - **Below rings**: Row of three smaller rings (Protein, Carbs, Fat) each with a "Xg left" / "Xg over" label
+- **Goal Progress mini-card**: Shows "Day X of Y" with a mini progress bar; warning icon if off-track; taps through to the Progress tab
 - **Today's Log card**: Lists every logged entry for the day with name, servings, kcal, P/C/F, and a remove button. "Clear All" link when entries exist.
 - **Log a Meal button**: Opens the `log-meal` modal
 - **Daily Summary card**: Shows BMR, TDEE, daily calorie adjustment, weekly weight change target
@@ -333,11 +346,13 @@ Full-screen detail view for a single recipe, accessed by tapping a recipe card i
 
 ### Log Meal Modal (`app/log-meal.tsx`)
 
-Full-screen modal for browsing and logging a food item or recipe to the daily log.
+Full-screen modal for browsing and logging a food item or recipe to the daily log, or entering a completely custom meal by hand.
 
 **Layout:**
 - Header: "Cancel" (left), "Log a Meal" title (center)
-- Foods / Recipes toggle
+- Foods / Recipes / Custom toggle (three buttons)
+
+**Foods and Recipes modes:**
 - Filter chips (same set as Meals tab)
 - Item list — tapping an item selects it (highlighted border)
 - **Bottom selection panel** (appears when an item is selected):
@@ -345,13 +360,30 @@ Full-screen modal for browsing and logging a food item or recipe to the daily lo
   - Servings picker: `[−]  N servings  [+]` (0.5 increments, min 0.5)
   - "Add to Today's Log" button — calls `addEntry` from `DailyLogContext` and dismisses
 
-### Tab 3: Profile (`app/(tabs)/profile.tsx`)
+**Custom mode** (filter chips and item list are hidden):
+- Meal Name field (required text input)
+- Calories field (required numeric input)
+- Protein / Carbs / Fat fields side-by-side (numeric, default 0 if blank), each labelled in its macro accent colour
+- Live macro preview row appears once a calorie value is typed
+- "Add to Today's Log" button — validates inputs, logs the entry with `servings: 1` and the entered values as per-serving macros, then dismisses
+
+### Tab 3: Progress (`app/(tabs)/progress.tsx`)
+
+Goal tracking and weight history screen.
+
+**Layout:**
+- **Goal Timeline card**: "Day X of Y" counter, progress bar between start/end dates, start weight, goal weight, expected weight today. "Start New Goal Period" resets timer to today.
+- **On-track / off-track banner**: Appears after ≥7 days with a logged weight entry. Compares actual vs. expected weight (threshold: 0.5 kg). Tells the user how many kcal/day to add or remove to get back on schedule (capped at ±300 kcal/day).
+- **Weight Log card**: Inline form to log today's weight (+ optional note). Shows full history list sorted newest-first with remove buttons. Weight stored in kg internally; displayed in user's chosen unit.
+- **Calorie History**: Mini bar chart of every day (since goal start, up to 60 days) where meals were logged, colour-coded vs. daily calorie target (green = on target, yellow = under, red = over).
+
+### Tab 4: Profile (`app/(tabs)/profile.tsx`)
 
 Displays current user profile and allows editing.
 
 **Layout:**
 - **Profile card**: Sex, age, height, weight displayed in a clean card
-- **Goal card**: Current goal weight, timeframe, goal type badge
+- **Goal card**: Current goal weight, timeframe, goal start date, goal type badge. "Start New Goal Period" inline button resets the goal timer.
 - **Activity card**: Activity level and workout type
 - **Computed stats card**: BMR, TDEE, daily calorie target
 - **"Edit Profile" button**: Opens the profile form as a modal
@@ -573,6 +605,7 @@ const STORAGE_KEYS = {
   USER_PROFILE: '@macrofuel/user_profile',
   ONBOARDING_COMPLETE: '@macrofuel/onboarding_complete',
   DAILY_LOG_PREFIX: '@macrofuel/daily_log_',  // + 'YYYY-MM-DD' suffix
+  WEIGHT_HISTORY: '@macrofuel/weight_history',
 } as const;
 ```
 
@@ -583,10 +616,12 @@ Thin wrapper over AsyncStorage with JSON serialization:
 - `loadProfile(): Promise<UserProfile | null>`
 - `setOnboardingComplete(): Promise<void>`
 - `isOnboardingComplete(): Promise<boolean>`
-- `clearAllData(): Promise<void>` — also clears today's daily log
+- `clearAllData(): Promise<void>` — clears profile, onboarding flag, weight history, and today's daily log
 - `saveDailyLog(date: string, entries: LogEntry[]): Promise<void>`
 - `loadDailyLog(date: string): Promise<LogEntry[]>`
 - `clearDailyLog(date: string): Promise<void>`
+- `saveWeightHistory(entries: WeightEntry[]): Promise<void>`
+- `loadWeightHistory(): Promise<WeightEntry[]>`
 
 ### Daily Log Context (`src/context/DailyLogContext.tsx`)
 
@@ -607,23 +642,27 @@ Loads from AsyncStorage on mount using today's date (`YYYY-MM-DD`). All mutation
 
 ### Custom Hooks
 
-- **`useUserProfile()`**: Returns `{ profile, saveProfile, isLoading, isOnboarded }`. Reads from AsyncStorage on mount. `saveProfile` writes back and marks onboarding complete.
+- **`useUserProfile()`**: Returns `{ profile, saveProfile, restartGoal, isLoading, isOnboarded }`. Reads from AsyncStorage on mount. `saveProfile` stamps `goalStartDate` + `goalStartWeightKg` on first save and resets them whenever `goalWeightKg` or `goalTimeframeWeeks` changes. `restartGoal(weightKg?)` resets the goal start date to today without changing any other profile fields.
 - **`useMacroTargets(profile)`**: Pure derivation. Runs BMR → TDEE → GoalPlanner → MacroSplit pipeline. Returns full `MacroTargets`. Memoized with `useMemo` on profile fields.
 - **`useFoodSuggestions(macroTargets, filter)`**: Filters and scores food/recipe database. Returns sorted arrays. Memoized on targets and active filter.
+- **`useWeightHistory()`**: Returns `{ entries, addEntry, removeEntry, isLoading }`. Entries are sorted newest-first. Persists to `@macrofuel/weight_history` after every mutation.
+- **`useGoalProgress(profile, weightEntries)`**: Pure derivation. Returns a `GoalProgressData` object with `daysElapsed`, `totalDays`, `progressPercent`, `expectedWeightLbs`, `actualWeightLbs`, `deviationLbs`, `suggestion`, and `suggestedCalAdjustment`. Suggestion is only produced after ≥7 days with at least one weight entry; threshold is 1.1 lbs deviation from expected (≈0.5 kg).
 
 ---
 
 ## Unit Conversion Helpers (`src/utils/formatters.ts`)
 
+Internal values are always imperial (lbs, total inches). These helpers convert for display or when accepting user input in the alternate unit.
+
 - `lbsToKg(lbs: number): number` — multiply by 0.453592
 - `kgToLbs(kg: number): number` — multiply by 2.20462
 - `inchesToCm(inches: number): number` — multiply by 2.54
 - `cmToInches(cm: number): number` — multiply by 0.393701
-- `feetInchesToCm(feet: number, inches: number): number`
-- `cmToFeetInches(cm: number): { feet: number, inches: number }`
+- `feetInchesToTotalInches(feet: number, inches: number): number`
+- `totalInchesToFeetInches(totalInches: number): { feet: number, inches: number }`
 - `formatNumber(n: number, decimals?: number): string` — rounds and formats
-- `formatWeight(kg: number, unit: WeightUnit): string` — e.g., "185 lbs" or "84 kg"
-- `formatHeight(cm: number, unit: HeightUnit): string` — e.g., "5'11\"" or "180 cm"
+- `formatWeight(lbs: number, unit: WeightUnit): string` — e.g., "185 lbs" or "84 kg" (converts lbs→kg when unit is 'kg')
+- `formatHeight(totalInches: number, unit: HeightUnit): string` — e.g., "5'9\"" or "175 cm" (converts inches→cm when unit is 'cm')
 
 ---
 
@@ -716,10 +755,11 @@ All core features are implemented and shipped:
 3. **Algorithms** — BMR (Mifflin-St Jeor), TDEE, goal planner, macro split calculator
 4. **Storage & hooks** — AsyncStorage wrapper, useUserProfile, useMacroTargets, daily log persistence
 5. **Onboarding wizard** — 5-step form: basics → measurements → activity → goal → results
-6. **Dashboard** — Animated macro rings (consumed vs. target), Today's Log card, Log a Meal button
+6. **Dashboard** — Animated macro rings (consumed vs. target), goal progress mini-card, Today's Log card, Log a Meal button
 7. **Food/recipe data** — ~110 foods and ~26 recipes embedded
 8. **Meals screen** — Food/recipe cards with filter chips; recipe cards navigate to detail screen
 9. **Recipe detail screen** — Full ingredients, instructions, macros, goal badges
 10. **Meal logging** — Log Meal modal with browsing, servings picker, live macro preview
-11. **Profile screen** — Display and edit profile, reset data, unit toggle
-12. **Android system UI** — Immersive mode hides system nav bar; swipe up to reveal temporarily
+11. **Progress screen** — Goal timeline (Day X of Y, progress bar, expected vs. actual weight), on-track/off-track banner with kcal adjustment suggestion, weight log with full history, calorie history bar chart
+12. **Profile screen** — Display and edit profile, goal start date, Start New Goal Period button, reset data, unit toggle
+13. **Android system UI** — Immersive mode hides system nav bar; swipe up to reveal temporarily

@@ -7,6 +7,8 @@ import { GradientHeader } from '../../src/components/GradientHeader';
 import { MacroDashboard } from '../../src/components/MacroDashboard';
 import { useUserProfile } from '../../src/hooks/useUserProfile';
 import { useMacroTargets } from '../../src/hooks/useMacroTargets';
+import { useWeightHistory } from '../../src/hooks/useWeightHistory';
+import { useGoalProgress } from '../../src/hooks/useGoalProgress';
 import { useDailyLog } from '../../src/context/DailyLogContext';
 import { colors } from '../../src/theme/colors';
 import { typography } from '../../src/theme/typography';
@@ -17,6 +19,8 @@ import { LogEntry } from '../../src/types';
 export default function DashboardScreen() {
   const { profile } = useUserProfile();
   const targets = useMacroTargets(profile);
+  const { entries: weightEntries } = useWeightHistory();
+  const progress = useGoalProgress(profile, weightEntries);
   const { entries, totals, removeEntry, clearLog } = useDailyLog();
 
   if (!profile || !targets) {
@@ -33,6 +37,39 @@ export default function DashboardScreen() {
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
 
         <MacroDashboard targets={targets} consumed={totals} />
+
+        {/* Goal Progress Mini-Card */}
+        {progress && (
+          <TouchableOpacity
+            style={styles.progressCard}
+            onPress={() => router.push('/(tabs)/progress')}
+            activeOpacity={0.8}
+          >
+            <View style={styles.progressCardRow}>
+              <View>
+                <Text style={styles.progressCardLabel}>Goal Progress</Text>
+                <Text style={styles.progressCardDay}>
+                  Day {progress.daysElapsed}
+                  <Text style={styles.progressCardTotal}> of {progress.totalDays}</Text>
+                </Text>
+              </View>
+              {progress.suggestion && progress.suggestion !== 'on_track' ? (
+                <Ionicons name="warning" size={20} color={colors.warning} />
+              ) : progress.suggestion === 'on_track' ? (
+                <Ionicons name="checkmark-circle" size={20} color={colors.success} />
+              ) : null}
+            </View>
+            <View style={styles.miniBarBg}>
+              <View
+                style={[
+                  styles.miniBarFill,
+                  { width: `${Math.min(progress.progressPercent * 100, 100)}%` },
+                ]}
+              />
+            </View>
+            <Text style={styles.progressCardHint}>Tap to view full progress →</Text>
+          </TouchableOpacity>
+        )}
 
         {/* Today's Log */}
         <View style={styles.card}>
@@ -116,8 +153,8 @@ export default function DashboardScreen() {
           <View style={styles.statRow}>
             <Text style={styles.statLabel}>Weekly Change</Text>
             <Text style={styles.statValue}>
-              {targets.weeklyWeightChangeKg > 0 ? '+' : ''}
-              {formatWeight(Math.abs(targets.weeklyWeightChangeKg), profile.weightUnit)}/week
+              {targets.weeklyWeightChangeLbs > 0 ? '+' : ''}
+              {formatWeight(Math.abs(targets.weeklyWeightChangeLbs), profile.weightUnit)}/week
             </Text>
           </View>
         </View>
@@ -263,5 +300,53 @@ const styles = StyleSheet.create({
   updateBtnText: {
     ...typography.bodyBold,
     color: colors.textPrimary,
+  },
+  progressCard: {
+    backgroundColor: colors.bgCard,
+    borderRadius: spacing.cardRadius,
+    padding: spacing.cardPadding,
+    marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  progressCardRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: spacing.sm,
+  },
+  progressCardLabel: {
+    ...typography.caption,
+    color: colors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 2,
+  },
+  progressCardDay: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: colors.textPrimary,
+  },
+  progressCardTotal: {
+    fontSize: 14,
+    fontWeight: '400',
+    color: colors.textMuted,
+  },
+  miniBarBg: {
+    height: 6,
+    backgroundColor: colors.bgInput,
+    borderRadius: 3,
+    overflow: 'hidden',
+    marginBottom: spacing.xs,
+  },
+  miniBarFill: {
+    height: '100%',
+    borderRadius: 3,
+    backgroundColor: colors.accent,
+  },
+  progressCardHint: {
+    ...typography.caption,
+    color: colors.textMuted,
+    marginTop: spacing.xs,
   },
 });

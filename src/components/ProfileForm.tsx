@@ -13,7 +13,7 @@ import { ActivityPicker } from './ActivityPicker';
 import { GoalSelector } from './GoalSelector';
 import { MacroDashboard } from './MacroDashboard';
 import { useMacroTargets } from '../hooks/useMacroTargets';
-import { lbsToKg, kgToLbs, feetInchesToCm, cmToFeetInches, cmToInches, inchesToCm } from '../utils/formatters';
+import { totalInchesToFeetInches, feetInchesToTotalInches } from '../utils/formatters';
 import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
 import { spacing } from '../theme/spacing';
@@ -23,14 +23,15 @@ interface ProfileFormProps {
   onSave: (profile: UserProfile) => void;
 }
 
+// Defaults in imperial (lbs, inches). 5'9" = 69 inches, 165 lbs goal 160 lbs.
 const defaultProfile: UserProfile = {
   sex: 'male',
-  heightCm: 175,
-  weightKg: 75,
+  heightIn: 69,
+  weightLbs: 165,
   age: 25,
   activityLevel: 'moderate',
   workoutType: 'mixed',
-  goalWeightKg: 73,
+  goalWeightLbs: 160,
   goalTimeframeWeeks: 12,
   weightUnit: 'lbs',
   heightUnit: 'in',
@@ -41,30 +42,33 @@ export function ProfileForm({ initialProfile, onSave }: ProfileFormProps) {
   const [profile, setProfile] = useState<UserProfile>(initialProfile || defaultProfile);
 
   const [ageStr, setAgeStr] = useState(String(profile.age));
+
+  // Weight display string — stored as lbs, displayed in chosen unit
   const [weightStr, setWeightStr] = useState(
     profile.weightUnit === 'lbs'
-      ? String(Math.round(kgToLbs(profile.weightKg)))
-      : String(Math.round(profile.weightKg))
+      ? String(Math.round(profile.weightLbs))
+      : String(Math.round(profile.weightLbs * 0.453592))
   );
+
+  // Height display — stored as total inches, displayed as ft/in or cm
   const [heightStr, setHeightStr] = useState(() => {
     if (profile.heightUnit === 'in') {
-      const total = Math.round(cmToInches(profile.heightCm));
-      return String(total);
+      return String(Math.round(profile.heightIn));
     }
-    return String(Math.round(profile.heightCm));
+    return String(Math.round(profile.heightIn * 2.54));
   });
   const [feetStr, setFeetStr] = useState(() => {
-    const { feet } = cmToFeetInches(profile.heightCm);
-    return String(feet);
+    return String(totalInchesToFeetInches(profile.heightIn).feet);
   });
   const [inchesStr, setInchesStr] = useState(() => {
-    const { inches } = cmToFeetInches(profile.heightCm);
-    return String(inches);
+    return String(totalInchesToFeetInches(profile.heightIn).inches);
   });
+
+  // Goal weight display string
   const [goalWeightStr, setGoalWeightStr] = useState(
     profile.weightUnit === 'lbs'
-      ? String(Math.round(kgToLbs(profile.goalWeightKg)))
-      : String(Math.round(profile.goalWeightKg))
+      ? String(Math.round(profile.goalWeightLbs))
+      : String(Math.round(profile.goalWeightLbs * 0.453592))
   );
 
   const macroTargets = useMacroTargets(profile);
@@ -78,7 +82,8 @@ export function ProfileForm({ initialProfile, onSave }: ProfileFormProps) {
     setWeightStr(val);
     const num = parseFloat(val);
     if (!isNaN(num) && num > 0) {
-      updateProfile({ weightKg: profile.weightUnit === 'lbs' ? lbsToKg(num) : num });
+      // Always store as lbs internally
+      updateProfile({ weightLbs: profile.weightUnit === 'lbs' ? num : num * 2.20462 });
     }
   };
 
@@ -90,12 +95,14 @@ export function ProfileForm({ initialProfile, onSave }: ProfileFormProps) {
       if (field === 'inches') setInchesStr(val);
       const f = parseInt(newFeet) || 0;
       const i = parseInt(newInches) || 0;
-      updateProfile({ heightCm: feetInchesToCm(f, i) });
+      // Store as total inches internally
+      updateProfile({ heightIn: feetInchesToTotalInches(f, i) });
     } else {
       setHeightStr(val);
       const num = parseFloat(val);
       if (!isNaN(num) && num > 0) {
-        updateProfile({ heightCm: num });
+        // Convert cm input to inches for storage
+        updateProfile({ heightIn: num * 0.393701 });
       }
     }
   };
@@ -104,7 +111,8 @@ export function ProfileForm({ initialProfile, onSave }: ProfileFormProps) {
     setGoalWeightStr(val);
     const num = parseFloat(val);
     if (!isNaN(num) && num > 0) {
-      updateProfile({ goalWeightKg: profile.weightUnit === 'lbs' ? lbsToKg(num) : num });
+      // Always store as lbs internally
+      updateProfile({ goalWeightLbs: profile.weightUnit === 'lbs' ? num : num * 2.20462 });
     }
   };
 
@@ -156,7 +164,7 @@ export function ProfileForm({ initialProfile, onSave }: ProfileFormProps) {
                 </View>
                 <TouchableOpacity onPress={() => {
                   updateProfile({ heightUnit: 'cm' });
-                  setHeightStr(String(Math.round(profile.heightCm)));
+                  setHeightStr(String(Math.round(profile.heightIn * 2.54)));
                 }}>
                   <Text style={styles.switchUnit}>Switch to cm</Text>
                 </TouchableOpacity>
@@ -171,7 +179,7 @@ export function ProfileForm({ initialProfile, onSave }: ProfileFormProps) {
                 />
                 <TouchableOpacity onPress={() => {
                   updateProfile({ heightUnit: 'in' });
-                  const { feet, inches } = cmToFeetInches(profile.heightCm);
+                  const { feet, inches } = totalInchesToFeetInches(profile.heightIn);
                   setFeetStr(String(feet));
                   setInchesStr(String(inches));
                 }}>
@@ -190,13 +198,13 @@ export function ProfileForm({ initialProfile, onSave }: ProfileFormProps) {
                 updateProfile({ weightUnit: unit });
                 setWeightStr(
                   unit === 'lbs'
-                    ? String(Math.round(kgToLbs(profile.weightKg)))
-                    : String(Math.round(profile.weightKg))
+                    ? String(Math.round(profile.weightLbs))
+                    : String(Math.round(profile.weightLbs * 0.453592))
                 );
                 setGoalWeightStr(
                   unit === 'lbs'
-                    ? String(Math.round(kgToLbs(profile.goalWeightKg)))
-                    : String(Math.round(profile.goalWeightKg))
+                    ? String(Math.round(profile.goalWeightLbs))
+                    : String(Math.round(profile.goalWeightLbs * 0.453592))
                 );
               }}
             />
@@ -223,15 +231,15 @@ export function ProfileForm({ initialProfile, onSave }: ProfileFormProps) {
               onGoalWeightChange={handleGoalWeightChange}
               timeframeWeeks={profile.goalTimeframeWeeks}
               onTimeframeChange={(w) => updateProfile({ goalTimeframeWeeks: w })}
-              currentWeightKg={profile.weightKg}
+              currentWeightLbs={profile.weightLbs}
               weightUnit={profile.weightUnit}
               onWeightUnitChange={(u) => {
                 const unit = u as WeightUnit;
                 updateProfile({ weightUnit: unit });
                 setGoalWeightStr(
                   unit === 'lbs'
-                    ? String(Math.round(kgToLbs(profile.goalWeightKg)))
-                    : String(Math.round(profile.goalWeightKg))
+                    ? String(Math.round(profile.goalWeightLbs))
+                    : String(Math.round(profile.goalWeightLbs * 0.453592))
                 );
               }}
             />
