@@ -9,18 +9,18 @@ export function useMacroTargets(profile: UserProfile | null): MacroTargets | nul
   return useMemo(() => {
     if (!profile) return null;
 
-    const bmr = calculateBMR(profile.sex, profile.weightKg, profile.heightCm, profile.age);
+    const bmr = calculateBMR(profile.sex, profile.weightLbs, profile.heightIn, profile.age);
     const tdee = calculateTDEE(bmr, profile.activityLevel, profile.workoutType);
-    const goal = planGoal(profile.weightKg, profile.goalWeightKg, profile.goalTimeframeWeeks, tdee);
+    const goal = planGoal(profile.weightLbs, profile.goalWeightLbs, profile.goalTimeframeWeeks, tdee);
 
     return calculateMacros(
       goal.targetCalories,
       goal.goalType,
       profile.workoutType,
-      profile.weightKg,
+      profile.weightLbs,
       bmr,
       tdee,
-      goal.weeklyChangeKg,
+      goal.weeklyChangeLbs,
       goal.dailyCalorieAdjustment
     );
   }, [profile]);

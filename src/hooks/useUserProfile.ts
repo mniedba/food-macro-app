@@ -29,14 +29,14 @@ export function useUserProfile() {
     if (!profile?.goalStartDate) {
       // First save (onboarding) — stamp goal start date and starting weight
       profileToSave.goalStartDate = todayString();
-      profileToSave.goalStartWeightKg = newProfile.weightKg;
+      profileToSave.goalStartWeightLbs = newProfile.weightLbs;
     } else if (
-      profile.goalWeightKg !== newProfile.goalWeightKg ||
+      profile.goalWeightLbs !== newProfile.goalWeightLbs ||
       profile.goalTimeframeWeeks !== newProfile.goalTimeframeWeeks
     ) {
       // Goal target or timeframe changed — restart the goal period
       profileToSave.goalStartDate = todayString();
-      profileToSave.goalStartWeightKg = newProfile.weightKg;
+      profileToSave.goalStartWeightLbs = newProfile.weightLbs;
     }
 
     await storageSave(profileToSave);
@@ -46,12 +46,12 @@ export function useUserProfile() {
   }, [profile]);
 
   // Explicitly restart the goal period (e.g. from Profile screen "Start New Goal")
-  const restartGoal = useCallback(async (currentWeightKg?: number) => {
+  const restartGoal = useCallback(async (currentWeightLbs?: number) => {
     if (!profile) return;
     const updated: UserProfile = {
       ...profile,
       goalStartDate: todayString(),
-      goalStartWeightKg: currentWeightKg ?? profile.weightKg,
+      goalStartWeightLbs: currentWeightLbs ?? profile.weightLbs,
     };
     await storageSave(updated);
     setProfile(updated);

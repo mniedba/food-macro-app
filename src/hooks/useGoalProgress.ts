@@ -11,18 +11,18 @@ export type ProgressSuggestion =
 export interface GoalProgressData {
   daysElapsed: number;
   totalDays: number;
-  progressPercent: number;       // 0–1
+  progressPercent: number;        // 0–1
   startDate: string;
   endDate: string;
-  startWeightKg: number;
-  goalWeightKg: number;
-  expectedWeightKg: number;      // where the user should be right now
-  actualWeightKg: number | null; // latest logged weight (null if never logged)
-  deviationKg: number | null;    // actual − expected (positive = heavier than expected)
+  startWeightLbs: number;
+  goalWeightLbs: number;
+  expectedWeightLbs: number;      // where the user should be right now
+  actualWeightLbs: number | null; // latest logged weight (null if never logged)
+  deviationLbs: number | null;    // actual − expected (positive = heavier than expected)
   suggestion: ProgressSuggestion | null;
   suggestedCalAdjustment: number; // kcal/day to add (positive) or remove (negative)
   isComplete: boolean;
-  weeklyChangeKg: number;        // planned weekly change
+  weeklyChangeLbs: number;        // planned weekly change
 }
 
 function addDays(dateStr: string, days: number): string {
@@ -50,54 +50,55 @@ export function useGoalProgress(
     const daysElapsed = Math.max(0, daysBetween(startDate, today));
     const weeksElapsed = daysElapsed / 7;
 
-    const startWeightKg = profile.goalStartWeightKg ?? profile.weightKg;
-    const goalWeightKg = profile.goalWeightKg;
-    const totalChange = goalWeightKg - startWeightKg;
-    const weeklyChangeKg = totalChange / profile.goalTimeframeWeeks;
+    const startWeightLbs = profile.goalStartWeightLbs ?? profile.weightLbs;
+    const goalWeightLbs = profile.goalWeightLbs;
+    const totalChange = goalWeightLbs - startWeightLbs;
+    const weeklyChangeLbs = totalChange / profile.goalTimeframeWeeks;
 
-    const expectedWeightKg = startWeightKg + weeklyChangeKg * weeksElapsed;
+    const expectedWeightLbs = startWeightLbs + weeklyChangeLbs * weeksElapsed;
 
     const latestEntry = weightEntries[0] ?? null; // already sorted newest-first
-    const actualWeightKg = latestEntry?.weightKg ?? null;
-    const deviationKg = actualWeightKg !== null ? actualWeightKg - expectedWeightKg : null;
+    const actualWeightLbs = latestEntry?.weightLbs ?? null;
+    const deviationLbs = actualWeightLbs !== null ? actualWeightLbs - expectedWeightLbs : null;
 
     // Only suggest after at least one week with a logged weight
-    const THRESHOLD = 0.5; // kg
+    // 1.1 lbs ≈ 0.5 kg threshold
+    const THRESHOLD = 1.1;
     let suggestion: ProgressSuggestion | null = null;
     let suggestedCalAdjustment = 0;
 
-    if (deviationKg !== null && daysElapsed >= 7) {
+    if (deviationLbs !== null && daysElapsed >= 7) {
       const daysRemaining = Math.max(totalDays - daysElapsed, 7);
 
-      if (weeklyChangeKg < -0.05) {
+      if (weeklyChangeLbs < -0.11) {
         // Cutting goal
-        if (deviationKg > THRESHOLD) {
+        if (deviationLbs > THRESHOLD) {
           suggestion = 'losing_too_slow';
           suggestedCalAdjustment = -Math.min(
-            Math.round((deviationKg * 7700) / daysRemaining),
+            Math.round((deviationLbs * 3500) / daysRemaining),
             300
           );
-        } else if (deviationKg < -THRESHOLD) {
+        } else if (deviationLbs < -THRESHOLD) {
           suggestion = 'losing_too_fast';
           suggestedCalAdjustment = Math.min(
-            Math.round((Math.abs(deviationKg) * 7700) / daysRemaining),
+            Math.round((Math.abs(deviationLbs) * 3500) / daysRemaining),
             300
           );
         } else {
           suggestion = 'on_track';
         }
-      } else if (weeklyChangeKg > 0.05) {
+      } else if (weeklyChangeLbs > 0.11) {
         // Bulking goal
-        if (deviationKg < -THRESHOLD) {
+        if (deviationLbs < -THRESHOLD) {
           suggestion = 'gaining_too_slow';
           suggestedCalAdjustment = Math.min(
-            Math.round((Math.abs(deviationKg) * 7700) / daysRemaining),
+            Math.round((Math.abs(deviationLbs) * 3500) / daysRemaining),
             300
           );
-        } else if (deviationKg > THRESHOLD) {
+        } else if (deviationLbs > THRESHOLD) {
           suggestion = 'gaining_too_fast';
           suggestedCalAdjustment = -Math.min(
-            Math.round((deviationKg * 7700) / daysRemaining),
+            Math.round((deviationLbs * 3500) / daysRemaining),
             300
           );
         } else {
@@ -105,18 +106,18 @@ export function useGoalProgress(
         }
       } else {
         // Maintenance goal — flag large swings either way
-        if (Math.abs(deviationKg) <= THRESHOLD) {
+        if (Math.abs(deviationLbs) <= THRESHOLD) {
           suggestion = 'on_track';
-        } else if (deviationKg > THRESHOLD) {
+        } else if (deviationLbs > THRESHOLD) {
           suggestion = 'gaining_too_fast';
           suggestedCalAdjustment = -Math.min(
-            Math.round((deviationKg * 7700) / daysRemaining),
+            Math.round((deviationLbs * 3500) / daysRemaining),
             200
           );
         } else {
           suggestion = 'losing_too_fast';
           suggestedCalAdjustment = Math.min(
-            Math.round((Math.abs(deviationKg) * 7700) / daysRemaining),
+            Math.round((Math.abs(deviationLbs) * 3500) / daysRemaining),
             200
           );
         }
@@ -129,15 +130,15 @@ export function useGoalProgress(
       progressPercent: Math.min(daysElapsed / Math.max(totalDays, 1), 1),
       startDate,
       endDate,
-      startWeightKg,
-      goalWeightKg,
-      expectedWeightKg,
-      actualWeightKg,
-      deviationKg,
+      startWeightLbs,
+      goalWeightLbs,
+      expectedWeightLbs,
+      actualWeightLbs,
+      deviationLbs,
       suggestion,
       suggestedCalAdjustment,
       isComplete: daysElapsed >= totalDays,
-      weeklyChangeKg,
+      weeklyChangeLbs,
     };
   }, [profile, weightEntries]);
 }

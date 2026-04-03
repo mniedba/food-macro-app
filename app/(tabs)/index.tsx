@@ -153,8 +153,8 @@ export default function DashboardScreen() {
           <View style={styles.statRow}>
             <Text style={styles.statLabel}>Weekly Change</Text>
             <Text style={styles.statValue}>
-              {targets.weeklyWeightChangeKg > 0 ? '+' : ''}
-              {formatWeight(Math.abs(targets.weeklyWeightChangeKg), profile.weightUnit)}/week
+              {targets.weeklyWeightChangeLbs > 0 ? '+' : ''}
+              {formatWeight(Math.abs(targets.weeklyWeightChangeLbs), profile.weightUnit)}/week
             </Text>
           </View>
         </View>

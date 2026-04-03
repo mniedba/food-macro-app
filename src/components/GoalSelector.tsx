@@ -5,14 +5,13 @@ import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
 import { spacing } from '../theme/spacing';
 import { WeightUnit } from '../types';
-import { kgToLbs, lbsToKg } from '../utils/formatters';
 
 interface GoalSelectorProps {
   goalWeight: string;
   onGoalWeightChange: (val: string) => void;
   timeframeWeeks: number;
   onTimeframeChange: (weeks: number) => void;
-  currentWeightKg: number;
+  currentWeightLbs: number;
   weightUnit: WeightUnit;
   onWeightUnitChange: (unit: string) => void;
 }
@@ -22,17 +21,24 @@ export function GoalSelector({
   onGoalWeightChange,
   timeframeWeeks,
   onTimeframeChange,
-  currentWeightKg,
+  currentWeightLbs,
   weightUnit,
   onWeightUnitChange,
 }: GoalSelectorProps) {
   const goalWeightNum = parseFloat(goalWeight) || 0;
-  const goalKg = weightUnit === 'lbs' ? lbsToKg(goalWeightNum) : goalWeightNum;
-  const diffKg = goalKg - currentWeightKg;
-  const weeklyChange = timeframeWeeks > 0 ? diffKg / timeframeWeeks : 0;
+  // Goal weight input is in the selected display unit; convert to lbs for the diff
+  const goalLbs = weightUnit === 'lbs' ? goalWeightNum : goalWeightNum * 2.20462;
+  const diffLbs = goalLbs - currentWeightLbs;
+  const weeklyChangeLbs = timeframeWeeks > 0 ? diffLbs / timeframeWeeks : 0;
 
-  const isAggressive = weeklyChange < -1 || weeklyChange > 0.5;
+  // Aggressive thresholds in lbs: >2.2 lbs/week loss (≈1 kg) or >1.1 lbs/week gain (≈0.5 kg)
+  const isAggressive = weeklyChangeLbs < -2.2 || weeklyChangeLbs > 1.1;
   const months = Math.round((timeframeWeeks / 52) * 12 * 10) / 10;
+
+  // Display weekly change in the user's chosen unit
+  const weeklyChangeDisplay = weightUnit === 'lbs'
+    ? weeklyChangeLbs
+    : weeklyChangeLbs * 0.453592;
 
   return (
     <View>
@@ -73,18 +79,14 @@ export function GoalSelector({
 
       <View style={styles.preview}>
         <Text style={styles.previewText}>
-          Weekly change: {weeklyChange > 0 ? '+' : ''}
-          {(weightUnit === 'lbs'
-            ? weeklyChange * 2.20462
-            : weeklyChange
-          ).toFixed(2)}{' '}
-          {weightUnit}/week
+          Weekly change: {weeklyChangeLbs > 0 ? '+' : ''}
+          {weeklyChangeDisplay.toFixed(2)} {weightUnit}/week
         </Text>
         {isAggressive && (
           <Text style={styles.warning}>
-            {weeklyChange < -1
-              ? 'Warning: Losing more than 1 kg/week may not be sustainable'
-              : 'Warning: Gaining more than 0.5 kg/week may lead to excess fat gain'}
+            {weeklyChangeLbs < -2.2
+              ? 'Warning: Losing more than 2 lbs/week may not be sustainable'
+              : 'Warning: Gaining more than 1 lb/week may lead to excess fat gain'}
           </Text>
         )}
       </View>

@@ -14,12 +14,12 @@ export function useWeightHistory() {
     })();
   }, []);
 
-  const addEntry = useCallback(async (weightKg: number, note?: string) => {
+  const addEntry = useCallback(async (weightLbs: number, note?: string) => {
     const today = new Date().toISOString().split('T')[0];
     const newEntry: WeightEntry = {
       id: Date.now().toString(),
       date: today,
-      weightKg,
+      weightLbs,
       note,
     };
     setEntries(prev => {

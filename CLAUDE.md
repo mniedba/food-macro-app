@@ -101,23 +101,23 @@ export type HeightUnit = 'in' | 'cm';
 
 export interface UserProfile {
   sex: Sex;
-  heightCm: number;           // always stored in cm internally
-  weightKg: number;           // always stored in kg internally
+  heightIn: number;            // always stored in total inches internally
+  weightLbs: number;           // always stored in lbs internally
   age: number;
   activityLevel: ActivityLevel;
   workoutType: WorkoutType;
-  goalWeightKg: number;
+  goalWeightLbs: number;
   goalTimeframeWeeks: number;  // 4-52 weeks
   weightUnit: WeightUnit;      // display preference
   heightUnit: HeightUnit;      // display preference
   goalStartDate?: string;      // 'YYYY-MM-DD' — stamped on first save; resets when goal target/timeframe changes
-  goalStartWeightKg?: number;  // body weight (kg) recorded at goal start
+  goalStartWeightLbs?: number; // body weight (lbs) recorded at goal start
 }
 
 export interface WeightEntry {
   id: string;
   date: string;       // 'YYYY-MM-DD'
-  weightKg: number;
+  weightLbs: number;
   note?: string;
 }
 
@@ -127,7 +127,7 @@ export interface MacroTargets {
   carbsGrams: number;
   fatGrams: number;
   goalType: GoalType;
-  weeklyWeightChangeKg: number;
+  weeklyWeightChangeLbs: number;
   dailyCalorieAdjustment: number;
   bmr: number;
   tdee: number;
@@ -188,14 +188,14 @@ export interface DailyTotals {
 
 ### 1. BMR — Mifflin-St Jeor Equation (`src/algorithms/bmr.ts`)
 
-The gold standard for estimating Basal Metabolic Rate:
+The gold standard for estimating Basal Metabolic Rate, expressed in imperial units:
 
 ```
-Male:   BMR = (10 × weightKg) + (6.25 × heightCm) - (5 × age) + 5
-Female: BMR = (10 × weightKg) + (6.25 × heightCm) - (5 × age) - 161
+Male:   BMR = (4.536 × weightLbs) + (12.7 × heightIn) - (5 × age) + 5
+Female: BMR = (4.536 × weightLbs) + (12.7 × heightIn) - (5 × age) - 161
 ```
 
-**Function**: `calculateBMR(sex: Sex, weightKg: number, heightCm: number, age: number): number`
+**Function**: `calculateBMR(sex: Sex, weightLbs: number, heightIn: number, age: number): number`
 
 ### 2. TDEE — Total Daily Energy Expenditure (`src/algorithms/tdee.ts`)
 
@@ -227,11 +227,11 @@ Multiply BMR by activity factor, then apply workout-type adjustment:
 Derives daily caloric adjustment from the user's goal:
 
 ```
-totalWeightChangeKg = goalWeightKg - currentWeightKg
-weeklyChangeKg = totalWeightChangeKg / timeframeWeeks
+totalWeightChangeLbs = goalWeightLbs - currentWeightLbs
+weeklyChangeLbs = totalWeightChangeLbs / timeframeWeeks
 
-// 1 kg body weight ≈ 7700 kcal
-dailyCalorieAdjustment = (weeklyChangeKg × 7700) / 7
+// 1 lb body weight ≈ 3500 kcal
+dailyCalorieAdjustment = (weeklyChangeLbs × 3500) / 7
 
 // Safety clamp: max deficit -1000 kcal/day, max surplus +500 kcal/day
 dailyCalorieAdjustment = clamp(dailyCalorieAdjustment, -1000, 500)
@@ -240,11 +240,11 @@ targetCalories = tdee + dailyCalorieAdjustment
 ```
 
 **Goal Type Derivation**:
-- `goalWeightKg < currentWeightKg` → **cut**
-- `goalWeightKg === currentWeightKg` (within ±0.5kg) → **maintain**
-- `goalWeightKg > currentWeightKg` → **bulk**
+- `goalWeightLbs < currentWeightLbs - 1.1` → **cut**
+- within ±1.1 lbs → **maintain**
+- `goalWeightLbs > currentWeightLbs + 1.1` → **bulk**
 
-**Function**: `planGoal(currentWeightKg: number, goalWeightKg: number, timeframeWeeks: number, tdee: number): { targetCalories: number, goalType: GoalType, weeklyChangeKg: number, dailyCalorieAdjustment: number }`
+**Function**: `planGoal(currentWeightLbs: number, goalWeightLbs: number, timeframeWeeks: number, tdee: number): { targetCalories: number, goalType: GoalType, weeklyChangeLbs: number, dailyCalorieAdjustment: number }`
 
 ### 4. Macro Split Calculator (`src/algorithms/macros.ts`)
 
@@ -285,9 +285,9 @@ carbsGrams   = (targetCalories × carbsPct) / 4
 fatGrams     = (targetCalories × fatPct) / 9
 ```
 
-**Protein floor rule**: For weightlifters, enforce minimum 1.6g protein per kg body weight. If the percentage-based calculation falls below this floor, set protein to the floor value and redistribute the remaining calories proportionally between carbs and fat.
+**Protein floor rule**: For weightlifters, enforce minimum 0.73g protein per lb body weight (≈1.6g/kg). If the percentage-based calculation falls below this floor, set protein to the floor value and redistribute the remaining calories proportionally between carbs and fat.
 
-**Function**: `calculateMacros(targetCalories: number, goalType: GoalType, workoutType: WorkoutType, weightKg: number): MacroTargets`
+**Function**: `calculateMacros(targetCalories: number, goalType: GoalType, workoutType: WorkoutType, weightLbs: number, bmr: number, tdee: number, weeklyWeightChangeLbs: number, dailyCalorieAdjustment: number): MacroTargets`
 
 ---
 
@@ -646,21 +646,23 @@ Loads from AsyncStorage on mount using today's date (`YYYY-MM-DD`). All mutation
 - **`useMacroTargets(profile)`**: Pure derivation. Runs BMR → TDEE → GoalPlanner → MacroSplit pipeline. Returns full `MacroTargets`. Memoized with `useMemo` on profile fields.
 - **`useFoodSuggestions(macroTargets, filter)`**: Filters and scores food/recipe database. Returns sorted arrays. Memoized on targets and active filter.
 - **`useWeightHistory()`**: Returns `{ entries, addEntry, removeEntry, isLoading }`. Entries are sorted newest-first. Persists to `@macrofuel/weight_history` after every mutation.
-- **`useGoalProgress(profile, weightEntries)`**: Pure derivation. Returns a `GoalProgressData` object with `daysElapsed`, `totalDays`, `progressPercent`, `expectedWeightKg`, `actualWeightKg`, `deviationKg`, `suggestion`, and `suggestedCalAdjustment`. Suggestion is only produced after ≥7 days with at least one weight entry; threshold is 0.5 kg deviation from expected.
+- **`useGoalProgress(profile, weightEntries)`**: Pure derivation. Returns a `GoalProgressData` object with `daysElapsed`, `totalDays`, `progressPercent`, `expectedWeightLbs`, `actualWeightLbs`, `deviationLbs`, `suggestion`, and `suggestedCalAdjustment`. Suggestion is only produced after ≥7 days with at least one weight entry; threshold is 1.1 lbs deviation from expected (≈0.5 kg).
 
 ---
 
 ## Unit Conversion Helpers (`src/utils/formatters.ts`)
 
+Internal values are always imperial (lbs, total inches). These helpers convert for display or when accepting user input in the alternate unit.
+
 - `lbsToKg(lbs: number): number` — multiply by 0.453592
 - `kgToLbs(kg: number): number` — multiply by 2.20462
 - `inchesToCm(inches: number): number` — multiply by 2.54
 - `cmToInches(cm: number): number` — multiply by 0.393701
-- `feetInchesToCm(feet: number, inches: number): number`
-- `cmToFeetInches(cm: number): { feet: number, inches: number }`
+- `feetInchesToTotalInches(feet: number, inches: number): number`
+- `totalInchesToFeetInches(totalInches: number): { feet: number, inches: number }`
 - `formatNumber(n: number, decimals?: number): string` — rounds and formats
-- `formatWeight(kg: number, unit: WeightUnit): string` — e.g., "185 lbs" or "84 kg"
-- `formatHeight(cm: number, unit: HeightUnit): string` — e.g., "5'11\"" or "180 cm"
+- `formatWeight(lbs: number, unit: WeightUnit): string` — e.g., "185 lbs" or "84 kg" (converts lbs→kg when unit is 'kg')
+- `formatHeight(totalInches: number, unit: HeightUnit): string` — e.g., "5'9\"" or "175 cm" (converts inches→cm when unit is 'cm')
 
 ---
 

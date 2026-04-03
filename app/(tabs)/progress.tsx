@@ -105,8 +105,9 @@ export default function ProgressScreen() {
       Alert.alert('Invalid weight', 'Please enter a positive number.');
       return;
     }
-    const weightKg = unit === 'lbs' ? val * 0.453592 : val;
-    await addWeight(weightKg, noteInput.trim() || undefined);
+    // Always store as lbs internally; convert if user entered in kg
+    const weightLbs = unit === 'lbs' ? val : val * 2.20462;
+    await addWeight(weightLbs, noteInput.trim() || undefined);
     setWeightInput('');
     setNoteInput('');
     setShowLogForm(false);
@@ -124,7 +125,7 @@ export default function ProgressScreen() {
   };
 
   const handleRestartGoal = () => {
-    const latestWeight = weightEntries[0]?.weightKg ?? profile.weightKg;
+    const latestWeight = weightEntries[0]?.weightLbs ?? profile.weightLbs;
     Alert.alert(
       'Start New Goal Period',
       'This resets the goal timer to today, using your latest logged weight as the new starting point. Your goal weight and timeframe stay the same.',
@@ -205,15 +206,15 @@ export default function ProgressScreen() {
 
               <View style={styles.statRow}>
                 <Text style={styles.statLabel}>Start weight</Text>
-                <Text style={styles.statValue}>{formatWeight(progress.startWeightKg, unit)}</Text>
+                <Text style={styles.statValue}>{formatWeight(progress.startWeightLbs, unit)}</Text>
               </View>
               <View style={styles.statRow}>
                 <Text style={styles.statLabel}>Goal weight</Text>
-                <Text style={styles.statValue}>{formatWeight(progress.goalWeightKg, unit)}</Text>
+                <Text style={styles.statValue}>{formatWeight(progress.goalWeightLbs, unit)}</Text>
               </View>
               <View style={styles.statRow}>
                 <Text style={styles.statLabel}>Expected now</Text>
-                <Text style={styles.statValue}>{formatWeight(progress.expectedWeightKg, unit)}</Text>
+                <Text style={styles.statValue}>{formatWeight(progress.expectedWeightLbs, unit)}</Text>
               </View>
 
               {progress.isComplete && (
@@ -330,8 +331,8 @@ export default function ProgressScreen() {
           ) : (
             weightEntries.map(entry => {
               const displayWeight = unit === 'lbs'
-                ? (entry.weightKg * 2.20462).toFixed(1)
-                : entry.weightKg.toFixed(1);
+                ? entry.weightLbs.toFixed(1)
+                : (entry.weightLbs * 0.453592).toFixed(1);
               return (
                 <View key={entry.id} style={styles.weightRow}>
                   <View style={{ flex: 1 }}>

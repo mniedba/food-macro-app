@@ -4,30 +4,31 @@ function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
 
+// 1 lb body weight ≈ 3500 kcal
 export function planGoal(
-  currentWeightKg: number,
-  goalWeightKg: number,
+  currentWeightLbs: number,
+  goalWeightLbs: number,
   timeframeWeeks: number,
   tdee: number
 ): {
   targetCalories: number;
   goalType: GoalType;
-  weeklyChangeKg: number;
+  weeklyChangeLbs: number;
   dailyCalorieAdjustment: number;
 } {
-  const totalWeightChangeKg = goalWeightKg - currentWeightKg;
-  const weeklyChangeKg = totalWeightChangeKg / timeframeWeeks;
-  const dailyCalorieAdjustment = clamp((weeklyChangeKg * 7700) / 7, -1000, 500);
+  const totalWeightChangeLbs = goalWeightLbs - currentWeightLbs;
+  const weeklyChangeLbs = totalWeightChangeLbs / timeframeWeeks;
+  const dailyCalorieAdjustment = clamp((weeklyChangeLbs * 3500) / 7, -1000, 500);
   const targetCalories = Math.round(tdee + dailyCalorieAdjustment);
 
   let goalType: GoalType;
-  if (goalWeightKg < currentWeightKg - 0.5) {
+  if (goalWeightLbs < currentWeightLbs - 1.1) {
     goalType = 'cut';
-  } else if (goalWeightKg > currentWeightKg + 0.5) {
+  } else if (goalWeightLbs > currentWeightLbs + 1.1) {
     goalType = 'bulk';
   } else {
     goalType = 'maintain';
   }
 
-  return { targetCalories, goalType, weeklyChangeKg, dailyCalorieAdjustment };
+  return { targetCalories, goalType, weeklyChangeLbs, dailyCalorieAdjustment };
 }

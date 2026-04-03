@@ -5,10 +5,10 @@ export function calculateMacros(
   targetCalories: number,
   goalType: GoalType,
   workoutType: WorkoutType,
-  weightKg: number,
+  weightLbs: number,
   bmr: number,
   tdee: number,
-  weeklyWeightChangeKg: number,
+  weeklyWeightChangeLbs: number,
   dailyCalorieAdjustment: number
 ): MacroTargets {
   const ratios = macroPresets[goalType][workoutType];
@@ -17,9 +17,9 @@ export function calculateMacros(
   let carbsGrams = (targetCalories * ratios.carbs) / 4;
   let fatGrams = (targetCalories * ratios.fat) / 9;
 
-  // Protein floor rule for weightlifters: minimum 1.6g per kg
+  // Protein floor rule for weightlifters: minimum 0.73g per lb (≈1.6g per kg)
   if (workoutType === 'weightlifting') {
-    const proteinFloor = 1.6 * weightKg;
+    const proteinFloor = 0.73 * weightLbs;
     if (proteinGrams < proteinFloor) {
       proteinGrams = proteinFloor;
       const proteinCalories = proteinGrams * 4;
@@ -36,7 +36,7 @@ export function calculateMacros(
     carbsGrams: Math.round(carbsGrams),
     fatGrams: Math.round(fatGrams),
     goalType,
-    weeklyWeightChangeKg,
+    weeklyWeightChangeLbs,
     dailyCalorieAdjustment: Math.round(dailyCalorieAdjustment),
     bmr: Math.round(bmr),
     tdee: Math.round(tdee),

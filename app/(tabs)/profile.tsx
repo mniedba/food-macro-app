@@ -72,7 +72,7 @@ export default function ProfileScreen() {
   };
 
   const handleRestartGoal = () => {
-    const latestWeight = weightEntries[0]?.weightKg ?? profile?.weightKg;
+    const latestWeight = weightEntries[0]?.weightLbs ?? profile?.weightLbs;
     Alert.alert(
       'Start New Goal Period',
       'This resets the goal timer to today, using your latest logged weight as the new starting point. Your goal weight and timeframe stay the same.',
@@ -91,13 +91,13 @@ export default function ProfileScreen() {
           <Text style={styles.cardTitle}>Personal Info</Text>
           <InfoRow label="Sex" value={profile.sex === 'male' ? 'Male' : 'Female'} />
           <InfoRow label="Age" value={`${profile.age} years`} />
-          <InfoRow label="Height" value={formatHeight(profile.heightCm, profile.heightUnit)} />
-          <InfoRow label="Weight" value={formatWeight(profile.weightKg, profile.weightUnit)} />
+          <InfoRow label="Height" value={formatHeight(profile.heightIn, profile.heightUnit)} />
+          <InfoRow label="Weight" value={formatWeight(profile.weightLbs, profile.weightUnit)} />
         </View>
 
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Goal</Text>
-          <InfoRow label="Goal Weight" value={formatWeight(profile.goalWeightKg, profile.weightUnit)} />
+          <InfoRow label="Goal Weight" value={formatWeight(profile.goalWeightLbs, profile.weightUnit)} />
           <InfoRow label="Timeframe" value={`${profile.goalTimeframeWeeks} weeks`} />
           {profile.goalStartDate && (
             <InfoRow label="Goal Started" value={formatDate(profile.goalStartDate)} />
