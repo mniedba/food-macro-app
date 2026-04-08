@@ -324,11 +324,15 @@ The home screen showing consumed macros vs. daily targets.
 Scrollable food and recipe suggestions personalized to the user's macro targets.
 
 **Layout:**
-- **Top**: Horizontal scrollable filter chips: "All", "High Protein", "Low Carb", "Quick Prep", "Meal Prep", "Breakfast", "Lunch", "Dinner", "Snack"
-- **Toggle**: Switch between "Foods" and "Recipes" view
-- **List**: Vertical scrollable list of FoodCard components
+- **Search bar**: Text input (with search icon and clear button) to filter the current list by name in real time
+- **Toggle**: Switch between "Foods" and "Recipes" view (clears search query on switch)
+- **Filter chips**: Horizontal scrollable row of human-readable chips — "All", "High Protein", "Low Carb", "Quick", "Meal Prep", "Breakfast", "Lunch", "Dinner", "Snack" — that narrow results by food/recipe tag
+- **List**: Vertical scrollable list of FoodCard components; shows an empty state (search icon + "No results found") when search + filter combination yields nothing
 - Each card shows: name, macro breakdown mini-bar (colored segments), calories per serving, relevant tags
 - **Recipe cards are tappable**: navigates to `app/recipe/[id].tsx` for full detail
+
+**Filter chip keys** (internal tag values mapped to display labels):
+- `null` → "All", `high-protein` → "High Protein", `low-carb` → "Low Carb", `quick` → "Quick", `meal-prep` → "Meal Prep", `breakfast` → "Breakfast", `lunch` → "Lunch", `dinner` → "Dinner", `snack` → "Snack"
 
 ### Recipe Detail (`app/recipe/[id].tsx`)
 
