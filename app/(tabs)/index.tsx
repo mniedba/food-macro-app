@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Modal } from 'react-native';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,7 +16,19 @@ import { spacing } from '../../src/theme/spacing';
 import { formatWeight } from '../../src/utils/formatters';
 import { LogEntry } from '../../src/types';
 
+const TOOLTIPS = {
+  bmr: {
+    title: 'BMR — Basal Metabolic Rate',
+    body: 'The calories your body burns at complete rest to sustain basic functions like breathing, circulation, and cell repair. This is your minimum daily energy requirement, regardless of any activity.',
+  },
+  tdee: {
+    title: 'TDEE — Total Daily Energy Expenditure',
+    body: 'The total calories you burn each day, combining your BMR with your activity level and workout type. Eating exactly at your TDEE maintains your current weight — going below causes a deficit (cut), going above creates a surplus (bulk).',
+  },
+} as const;
+
 export default function DashboardScreen() {
+  const [tooltip, setTooltip] = useState<'bmr' | 'tdee' | null>(null);
   const { profile } = useUserProfile();
   const targets = useMacroTargets(profile);
   const { entries: weightEntries } = useWeightHistory();
@@ -135,11 +147,27 @@ export default function DashboardScreen() {
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Daily Summary</Text>
           <View style={styles.statRow}>
-            <Text style={styles.statLabel}>BMR</Text>
+            <View style={styles.statLabelRow}>
+              <Text style={styles.statLabel}>BMR</Text>
+              <TouchableOpacity
+                onPress={() => setTooltip('bmr')}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Ionicons name="help-circle-outline" size={15} color={colors.textMuted} style={styles.helpIcon} />
+              </TouchableOpacity>
+            </View>
             <Text style={styles.statValue}>{targets.bmr} kcal</Text>
           </View>
           <View style={styles.statRow}>
-            <Text style={styles.statLabel}>TDEE</Text>
+            <View style={styles.statLabelRow}>
+              <Text style={styles.statLabel}>TDEE</Text>
+              <TouchableOpacity
+                onPress={() => setTooltip('tdee')}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Ionicons name="help-circle-outline" size={15} color={colors.textMuted} style={styles.helpIcon} />
+              </TouchableOpacity>
+            </View>
             <Text style={styles.statValue}>{targets.tdee} kcal</Text>
           </View>
           <View style={styles.statRow}>
@@ -173,6 +201,28 @@ export default function DashboardScreen() {
           </LinearGradient>
         </TouchableOpacity>
       </ScrollView>
+
+      {/* BMR / TDEE tooltip modal */}
+      <Modal
+        transparent
+        animationType="fade"
+        visible={tooltip !== null}
+        onRequestClose={() => setTooltip(null)}
+      >
+        <TouchableOpacity
+          style={styles.modalBackdrop}
+          activeOpacity={1}
+          onPress={() => setTooltip(null)}
+        >
+          <View style={styles.tooltipCard} onStartShouldSetResponder={() => true}>
+            <Text style={styles.tooltipTitle}>{tooltip ? TOOLTIPS[tooltip].title : ''}</Text>
+            <Text style={styles.tooltipBody}>{tooltip ? TOOLTIPS[tooltip].body : ''}</Text>
+            <TouchableOpacity style={styles.tooltipCloseBtn} onPress={() => setTooltip(null)}>
+              <Text style={styles.tooltipCloseBtnText}>Got it</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 }
@@ -277,15 +327,59 @@ const styles = StyleSheet.create({
   statRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
     paddingVertical: spacing.sm,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
+  },
+  statLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  helpIcon: {
+    marginLeft: 5,
   },
   statLabel: {
     ...typography.body,
     color: colors.textSecondary,
   },
   statValue: {
+    ...typography.bodyBold,
+    color: colors.textPrimary,
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.65)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.lg,
+  },
+  tooltipCard: {
+    backgroundColor: colors.bgCard,
+    borderRadius: spacing.cardRadius,
+    padding: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    width: '100%',
+  },
+  tooltipTitle: {
+    ...typography.h3,
+    color: colors.textPrimary,
+    marginBottom: spacing.sm,
+  },
+  tooltipBody: {
+    ...typography.body,
+    color: colors.textSecondary,
+    lineHeight: 24,
+    marginBottom: spacing.lg,
+  },
+  tooltipCloseBtn: {
+    backgroundColor: colors.accent,
+    borderRadius: spacing.buttonRadius,
+    paddingVertical: spacing.sm,
+    alignItems: 'center',
+  },
+  tooltipCloseBtnText: {
     ...typography.bodyBold,
     color: colors.textPrimary,
   },

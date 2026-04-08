@@ -39,41 +39,48 @@ export function MacroRing({ value, maxValue, color, size, label, unit }: MacroRi
   }));
 
   return (
-    <View style={[styles.container, { width: size, height: size }]}>
-      <Svg width={size} height={size}>
-        <Circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          stroke={colors.bgCard}
-          strokeWidth={strokeWidth}
-          fill="none"
-        />
-        <AnimatedCircle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          stroke={color}
-          strokeWidth={strokeWidth}
-          fill="none"
-          strokeDasharray={circumference}
-          animatedProps={animatedProps}
-          strokeLinecap="round"
-          rotation="-90"
-          origin={`${size / 2}, ${size / 2}`}
-        />
-      </Svg>
-      <View style={styles.labelContainer}>
-        <Text style={[styles.value, { fontSize: size * 0.2 }]}>{Math.round(value)}</Text>
-        <Text style={[styles.unit, { fontSize: size * 0.09 }]}>{unit}</Text>
-        <Text style={[styles.label, { fontSize: size * 0.09 }]}>{label}</Text>
+    <View style={styles.wrapper}>
+      <View style={[styles.ringContainer, { width: size, height: size }]}>
+        <Svg width={size} height={size}>
+          <Circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            stroke={colors.bgCard}
+            strokeWidth={strokeWidth}
+            fill="none"
+          />
+          <AnimatedCircle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            stroke={color}
+            strokeWidth={strokeWidth}
+            fill="none"
+            strokeDasharray={circumference}
+            animatedProps={animatedProps}
+            strokeLinecap="round"
+            rotation="-90"
+            origin={`${size / 2}, ${size / 2}`}
+          />
+        </Svg>
+        <View style={styles.labelContainer}>
+          <Text style={[styles.fraction, { fontSize: size * 0.14 }]}>
+            {Math.round(value)}/{Math.round(maxValue)}
+          </Text>
+          <Text style={[styles.unit, { fontSize: size * 0.09 }]}>{unit}</Text>
+        </View>
       </View>
+      <Text style={[styles.metricLabel, { fontSize: size * 0.11 }]}>{label}</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  wrapper: {
+    alignItems: 'center',
+  },
+  ringContainer: {
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -81,7 +88,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     alignItems: 'center',
   },
-  value: {
+  fraction: {
     color: colors.textPrimary,
     fontWeight: typography.macro.fontWeight,
   },
@@ -89,9 +96,9 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     fontWeight: typography.macroUnit.fontWeight,
   },
-  label: {
-    color: colors.textMuted,
+  metricLabel: {
+    color: colors.textSecondary,
     fontWeight: typography.caption.fontWeight,
-    marginTop: 2,
+    marginTop: 6,
   },
 });
