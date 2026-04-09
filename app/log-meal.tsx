@@ -25,9 +25,16 @@ import { colors } from '../src/theme/colors';
 import { typography } from '../src/theme/typography';
 import { spacing } from '../src/theme/spacing';
 
-const FILTERS = [
-  'All', 'high-protein', 'low-carb', 'quick',
-  'meal-prep', 'breakfast', 'lunch', 'dinner', 'snack',
+const FILTERS: { key: string | null; label: string }[] = [
+  { key: null, label: 'All' },
+  { key: 'high-protein', label: 'High Protein' },
+  { key: 'low-carb', label: 'Low Carb' },
+  { key: 'quick', label: 'Quick' },
+  { key: 'meal-prep', label: 'Meal Prep' },
+  { key: 'breakfast', label: 'Breakfast' },
+  { key: 'lunch', label: 'Lunch' },
+  { key: 'dinner', label: 'Dinner' },
+  { key: 'snack', label: 'Snack' },
 ];
 
 type SelectedItem = {
@@ -282,7 +289,7 @@ export default function LogMealScreen() {
           <FlatList
             horizontal
             data={FILTERS}
-            keyExtractor={(f) => f}
+            keyExtractor={(f) => f.label}
             showsHorizontalScrollIndicator={false}
             style={styles.filterRow}
             contentContainerStyle={styles.filterContent}
@@ -290,15 +297,15 @@ export default function LogMealScreen() {
               <TouchableOpacity
                 style={[
                   styles.filterChip,
-                  (activeFilter === f || (f === 'All' && !activeFilter)) && styles.filterChipActive,
+                  activeFilter === f.key && styles.filterChipActive,
                 ]}
-                onPress={() => setActiveFilter(f === 'All' ? null : f)}
+                onPress={() => setActiveFilter(f.key)}
               >
                 <Text style={[
                   styles.filterText,
-                  (activeFilter === f || (f === 'All' && !activeFilter)) && styles.filterTextActive,
+                  activeFilter === f.key && styles.filterTextActive,
                 ]}>
-                  {f}
+                  {f.label}
                 </Text>
               </TouchableOpacity>
             )}
@@ -416,13 +423,13 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
   },
   filterRow: {
-    maxHeight: 50,
     marginTop: spacing.sm,
   },
   filterContent: {
     paddingHorizontal: spacing.screenPadding,
     paddingVertical: spacing.sm,
     gap: spacing.sm,
+    alignItems: 'center',
   },
   filterChip: {
     paddingHorizontal: 14,
@@ -431,7 +438,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bgCard,
     borderWidth: 1,
     borderColor: colors.border,
-    marginRight: spacing.sm,
   },
   filterChipActive: {
     backgroundColor: colors.accent,

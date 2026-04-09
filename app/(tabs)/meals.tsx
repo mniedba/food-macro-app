@@ -193,22 +193,21 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
   },
   filterRow: {
-    maxHeight: 48,
     marginBottom: spacing.sm,
   },
   filterContent: {
     paddingHorizontal: spacing.screenPadding,
-    paddingVertical: 4,
+    paddingVertical: spacing.sm,
     gap: spacing.sm,
+    alignItems: 'center',
   },
   filterChip: {
     paddingHorizontal: 14,
-    paddingVertical: 7,
+    paddingVertical: 8,
     borderRadius: 20,
     backgroundColor: colors.bgCard,
     borderWidth: 1,
     borderColor: colors.border,
-    marginRight: spacing.sm,
   },
   filterChipActive: {
     backgroundColor: colors.accent,
