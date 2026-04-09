@@ -193,6 +193,7 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
   },
   filterRow: {
+    flexShrink: 0,
     marginBottom: spacing.sm,
   },
   filterContent: {
