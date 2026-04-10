@@ -60,7 +60,7 @@ food-macro-app/
 │   ├── context/
 │   │   └── DailyLogContext.tsx       # React context + provider for daily meal log state
 │   ├── data/
-│   │   ├── foods.ts                  # Embedded food database (~150-200 items)
+│   │   ├── foods.ts                  # Embedded food database (~110 items)
 │   │   ├── recipes.ts               # Embedded recipe database (~50 recipes)
 │   │   ├── activityMultipliers.ts    # TDEE multiplier constants
 │   │   └── macroPresets.ts           # Macro ratio presets by goal × workout type
@@ -78,7 +78,7 @@ food-macro-app/
 │   │   └── index.ts                  # All TypeScript interfaces
 │   └── utils/
 │       ├── storage.ts                # AsyncStorage wrapper with JSON serialization
-│       └── formatters.ts             # Number formatting, unit display helpers
+│       └── formatters.ts             # Number/unit formatting helpers + localDateString
 ├── app.json                          # Expo config (name, icon, splash, Android package)
 ├── eas.json                          # EAS Build config for APK
 ├── tsconfig.json
@@ -379,7 +379,7 @@ Goal tracking and weight history screen.
 - **Goal Timeline card**: "Day X of Y" counter, progress bar between start/end dates, start weight, goal weight, expected weight today. "Start New Goal Period" resets timer to today.
 - **On-track / off-track banner**: Appears after ≥7 days with a logged weight entry. Compares actual vs. expected weight (threshold: 0.5 kg). Tells the user how many kcal/day to add or remove to get back on schedule (capped at ±300 kcal/day).
 - **Weight Log card**: Inline form to log today's weight (+ optional note). Shows full history list sorted newest-first with remove buttons. Weight stored in kg internally; displayed in user's chosen unit.
-- **Calorie History**: Mini bar chart of every day (since goal start, up to 60 days) where meals were logged, colour-coded vs. daily calorie target (green = on target, yellow = under, red = over).
+- **Calorie History**: Mini bar chart of every day (since goal start, up to 60 days) where meals were logged, colour-coded vs. daily calorie target (green = on target, yellow = under, red = over). Each row is tappable — tapping expands an inline panel showing every logged food/recipe for that day: name, serving count, kcal, and colour-coded P/C/F grams per entry, plus a "Day total" summary row at the bottom. Tapping again collapses. A chevron icon indicates the expanded state. All data comes from local AsyncStorage; no extra permissions required.
 
 ### Tab 4: Profile (`app/(tabs)/profile.tsx`)
 
@@ -430,7 +430,7 @@ Ship an embedded local database as TypeScript arrays — no external API depende
 
 ### Food Database (`src/data/foods.ts`)
 
-~150-200 common foods across these categories:
+~110 common foods across these categories:
 
 **Proteins (~40 items):** chicken breast, salmon, eggs, egg whites, Greek yogurt, cottage cheese, tofu, tempeh, lean ground beef (93/7), turkey breast, tuna (canned), shrimp, tilapia, pork tenderloin, whey protein powder, casein protein, edamame, lentils, black beans, chickpeas, etc.
 
@@ -646,11 +646,11 @@ Loads from AsyncStorage on mount using today's date (`YYYY-MM-DD`). All mutation
 
 ### Custom Hooks
 
-- **`useUserProfile()`**: Returns `{ profile, saveProfile, restartGoal, isLoading, isOnboarded }`. Reads from AsyncStorage on mount. `saveProfile` stamps `goalStartDate` + `goalStartWeightKg` on first save and resets them whenever `goalWeightKg` or `goalTimeframeWeeks` changes. `restartGoal(weightKg?)` resets the goal start date to today without changing any other profile fields.
+- **`useUserProfile()`**: Returns `{ profile, saveProfile, restartGoal, isLoading, isOnboarded }`. Reads from AsyncStorage on mount. `saveProfile` stamps `goalStartDate` + `goalStartWeightLbs` on first save and resets them whenever `goalWeightLbs` or `goalTimeframeWeeks` changes. `restartGoal(weightLbs?)` resets the goal start date to today without changing any other profile fields.
 - **`useMacroTargets(profile)`**: Pure derivation. Runs BMR → TDEE → GoalPlanner → MacroSplit pipeline. Returns full `MacroTargets`. Memoized with `useMemo` on profile fields.
 - **`useFoodSuggestions(macroTargets, filter)`**: Filters and scores food/recipe database. Returns sorted arrays. Memoized on targets and active filter.
 - **`useWeightHistory()`**: Returns `{ entries, addEntry, removeEntry, isLoading }`. Entries are sorted newest-first. Persists to `@macrofuel/weight_history` after every mutation.
-- **`useGoalProgress(profile, weightEntries)`**: Pure derivation. Returns a `GoalProgressData` object with `daysElapsed`, `totalDays`, `progressPercent`, `expectedWeightLbs`, `actualWeightLbs`, `deviationLbs`, `suggestion`, and `suggestedCalAdjustment`. Suggestion is only produced after ≥7 days with at least one weight entry; threshold is 1.1 lbs deviation from expected (≈0.5 kg).
+- **`useGoalProgress(profile, weightEntries)`**: Pure derivation. Returns a `GoalProgressData` object with: `daysElapsed`, `totalDays`, `progressPercent`, `startDate`, `endDate`, `startWeightLbs`, `goalWeightLbs`, `expectedWeightLbs`, `actualWeightLbs`, `deviationLbs`, `suggestion`, `suggestedCalAdjustment`, `isComplete`, and `weeklyChangeLbs`. Suggestion is only produced after ≥7 days with at least one weight entry; threshold is 1.1 lbs deviation from expected (≈0.5 kg).
 
 ---
 
@@ -667,6 +667,7 @@ Internal values are always imperial (lbs, total inches). These helpers convert f
 - `formatNumber(n: number, decimals?: number): string` — rounds and formats
 - `formatWeight(lbs: number, unit: WeightUnit): string` — e.g., "185 lbs" or "84 kg" (converts lbs→kg when unit is 'kg')
 - `formatHeight(totalInches: number, unit: HeightUnit): string` — e.g., "5'9\"" or "175 cm" (converts inches→cm when unit is 'cm')
+- `localDateString(date?: Date): string` — returns `'YYYY-MM-DD'` in the **device's local timezone**. Use this everywhere a date string is needed; never use `new Date().toISOString().split('T')[0]` which returns a UTC date and will log meals to the wrong day for users in non-zero UTC offsets.
 
 ---
 
