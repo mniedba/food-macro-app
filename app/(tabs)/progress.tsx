@@ -16,11 +16,11 @@ import { useMacroTargets } from '../../src/hooks/useMacroTargets';
 import { useWeightHistory } from '../../src/hooks/useWeightHistory';
 import { useGoalProgress } from '../../src/hooks/useGoalProgress';
 import { loadDailyLog } from '../../src/utils/storage';
-import { formatWeight } from '../../src/utils/formatters';
+import { formatWeight, localDateString } from '../../src/utils/formatters';
 import { colors } from '../../src/theme/colors';
 import { typography } from '../../src/theme/typography';
 import { spacing } from '../../src/theme/spacing';
-import { WeightEntry } from '../../src/types';
+import { WeightEntry, LogEntry } from '../../src/types';
 
 interface DayHistory {
   date: string;
@@ -28,6 +28,7 @@ interface DayHistory {
   proteinG: number;
   carbsG: number;
   fatG: number;
+  entries: LogEntry[];
 }
 
 function formatDate(dateStr: string): string {
@@ -43,7 +44,7 @@ function formatShortDate(dateStr: string): string {
 function addDays(dateStr: string, n: number): string {
   const d = new Date(dateStr + 'T00:00:00');
   d.setDate(d.getDate() + n);
-  return d.toISOString().split('T')[0];
+  return localDateString(d);
 }
 
 export default function ProgressScreen() {
@@ -56,11 +57,12 @@ export default function ProgressScreen() {
   const [noteInput, setNoteInput] = useState('');
   const [showLogForm, setShowLogForm] = useState(false);
   const [dayHistory, setDayHistory] = useState<DayHistory[]>([]);
+  const [expandedDate, setExpandedDate] = useState<string | null>(null);
 
   // Load the past N days of calorie logs for the history section
   useEffect(() => {
     if (!profile?.goalStartDate) return;
-    const today = new Date().toISOString().split('T')[0];
+    const today = localDateString();
     const startDate = profile.goalStartDate;
 
     // Collect dates from goal start up to today (newest first, max 60 days for perf)
@@ -70,7 +72,7 @@ export default function ProgressScreen() {
       dates.push(cursor);
       const d = new Date(cursor + 'T00:00:00');
       d.setDate(d.getDate() - 1);
-      cursor = d.toISOString().split('T')[0];
+      cursor = localDateString(d);
     }
 
     (async () => {
@@ -82,7 +84,7 @@ export default function ProgressScreen() {
           const proteinG = Math.round(entries.reduce((s, e) => s + e.proteinGPerServing * e.servings, 0));
           const carbsG = Math.round(entries.reduce((s, e) => s + e.carbsGPerServing * e.servings, 0));
           const fatG = Math.round(entries.reduce((s, e) => s + e.fatGPerServing * e.servings, 0));
-          results.push({ date, calories, proteinG, carbsG, fatG });
+          results.push({ date, calories, proteinG, carbsG, fatG, entries });
         }
       }
       setDayHistory(results);
@@ -357,25 +359,81 @@ export default function ProgressScreen() {
         {/* Calorie History */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Calorie History</Text>
-          <Text style={styles.mutedText2}>Days with logged meals since goal start</Text>
+          <Text style={styles.mutedText2}>Tap a day to see the full meal breakdown</Text>
           {dayHistory.length === 0 ? (
             <Text style={styles.mutedText}>No meal history yet.</Text>
           ) : (
             dayHistory.map(day => {
               const pct = targets.calories > 0 ? day.calories / targets.calories : 0;
               const barColor = pct > 1.1 ? colors.fats : pct < 0.85 ? colors.carbs : colors.success;
+              const isExpanded = expandedDate === day.date;
               return (
-                <View key={day.date} style={styles.historyRow}>
-                  <Text style={styles.historyDate}>{formatShortDate(day.date)}</Text>
-                  <View style={styles.historyBarContainer}>
-                    <View
-                      style={[
-                        styles.historyBar,
-                        { width: `${Math.min(pct * 100, 100)}%`, backgroundColor: barColor },
-                      ]}
+                <View key={day.date}>
+                  <TouchableOpacity
+                    style={styles.historyRow}
+                    onPress={() => setExpandedDate(isExpanded ? null : day.date)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.historyDate}>{formatShortDate(day.date)}</Text>
+                    <View style={styles.historyBarContainer}>
+                      <View
+                        style={[
+                          styles.historyBar,
+                          { width: `${Math.min(pct * 100, 100)}%`, backgroundColor: barColor },
+                        ]}
+                      />
+                    </View>
+                    <Text style={styles.historyKcal}>{day.calories} kcal</Text>
+                    <Ionicons
+                      name={isExpanded ? 'chevron-up' : 'chevron-down'}
+                      size={14}
+                      color={colors.textMuted}
                     />
-                  </View>
-                  <Text style={styles.historyKcal}>{day.calories} kcal</Text>
+                  </TouchableOpacity>
+
+                  {isExpanded && (
+                    <View style={styles.historyDetail}>
+                      {day.entries.map((entry, idx) => {
+                        const cal = Math.round(entry.caloriesPerServing * entry.servings);
+                        const p = Math.round(entry.proteinGPerServing * entry.servings);
+                        const c = Math.round(entry.carbsGPerServing * entry.servings);
+                        const f = Math.round(entry.fatGPerServing * entry.servings);
+                        const servingLabel = entry.servings === 1 ? '1 serving' : `${entry.servings} servings`;
+                        return (
+                          <View
+                            key={entry.id}
+                            style={[
+                              styles.detailEntry,
+                              idx < day.entries.length - 1 && styles.detailEntryBorder,
+                            ]}
+                          >
+                            <View style={styles.detailEntryTop}>
+                              <Text style={styles.detailName} numberOfLines={1}>
+                                {entry.itemName}
+                              </Text>
+                              <Text style={styles.detailCal}>{cal} kcal</Text>
+                            </View>
+                            <View style={styles.detailEntryBottom}>
+                              <Text style={styles.detailServings}>{servingLabel}</Text>
+                              <View style={styles.detailMacros}>
+                                <Text style={[styles.detailMacro, { color: colors.protein }]}>P {p}g</Text>
+                                <Text style={[styles.detailMacro, { color: colors.carbs }]}>C {c}g</Text>
+                                <Text style={[styles.detailMacro, { color: colors.fats }]}>F {f}g</Text>
+                              </View>
+                            </View>
+                          </View>
+                        );
+                      })}
+                      <View style={styles.detailTotalsRow}>
+                        <Text style={styles.detailTotalsLabel}>Day total</Text>
+                        <View style={styles.detailMacros}>
+                          <Text style={[styles.detailMacro, { color: colors.protein }]}>P {day.proteinG}g</Text>
+                          <Text style={[styles.detailMacro, { color: colors.carbs }]}>C {day.carbsG}g</Text>
+                          <Text style={[styles.detailMacro, { color: colors.fats }]}>F {day.fatG}g</Text>
+                        </View>
+                      </View>
+                    </View>
+                  )}
                 </View>
               );
             })
@@ -647,5 +705,71 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     width: 68,
     textAlign: 'right',
+  },
+  historyDetail: {
+    backgroundColor: colors.bgSecondary,
+    borderRadius: spacing.buttonRadius,
+    marginBottom: spacing.xs,
+    overflow: 'hidden',
+  },
+  detailEntry: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  detailEntryBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  detailEntryTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 3,
+  },
+  detailName: {
+    ...typography.caption,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    flex: 1,
+    marginRight: spacing.sm,
+  },
+  detailCal: {
+    ...typography.caption,
+    fontWeight: '600',
+    color: colors.calories,
+  },
+  detailEntryBottom: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  detailServings: {
+    ...typography.caption,
+    color: colors.textMuted,
+  },
+  detailMacros: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  detailMacro: {
+    ...typography.caption,
+    fontWeight: '600',
+  },
+  detailTotalsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    backgroundColor: colors.bgCard,
+  },
+  detailTotalsLabel: {
+    ...typography.caption,
+    color: colors.textMuted,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
 });

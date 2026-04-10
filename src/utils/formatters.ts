@@ -1,5 +1,16 @@
 import { WeightUnit, HeightUnit } from '../types';
 
+// Returns the current (or given) date as a 'YYYY-MM-DD' string in the device's
+// local timezone. Using toISOString() would give a UTC date, which is wrong for
+// users in non-zero UTC offsets — e.g. UTC+10 at 23:00 local is still the same
+// local day, but toISOString() would already show the next UTC day.
+export function localDateString(date: Date = new Date()): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 // Conversion helpers — kept for use in form components that accept user input
 // in either unit and need to convert for internal storage (lbs/inches).
 export function lbsToKg(lbs: number): number {
