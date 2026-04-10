@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { UserProfile, WeightEntry } from '../types';
+import { localDateString } from '../utils/formatters';
 
 export type ProgressSuggestion =
   | 'on_track'
@@ -26,9 +27,9 @@ export interface GoalProgressData {
 }
 
 function addDays(dateStr: string, days: number): string {
-  const d = new Date(dateStr);
+  const d = new Date(dateStr + 'T00:00:00');
   d.setDate(d.getDate() + days);
-  return d.toISOString().split('T')[0];
+  return localDateString(d);
 }
 
 function daysBetween(a: string, b: string): number {
@@ -42,7 +43,7 @@ export function useGoalProgress(
   return useMemo(() => {
     if (!profile?.goalStartDate) return null;
 
-    const today = new Date().toISOString().split('T')[0];
+    const today = localDateString();
     const startDate = profile.goalStartDate;
     const totalDays = profile.goalTimeframeWeeks * 7;
     const endDate = addDays(startDate, totalDays);

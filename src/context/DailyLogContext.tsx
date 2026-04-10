@@ -1,10 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import { LogEntry, DailyTotals } from '../types';
 import { saveDailyLog, loadDailyLog, clearDailyLog } from '../utils/storage';
-
-function todayString(): string {
-  return new Date().toISOString().split('T')[0];
-}
+import { localDateString } from '../utils/formatters';
 
 interface DailyLogContextValue {
   entries: LogEntry[];
@@ -22,7 +19,7 @@ export function DailyLogProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    loadDailyLog(todayString()).then((loaded) => {
+    loadDailyLog(localDateString()).then((loaded) => {
       setEntries(loaded);
       setIsLoading(false);
     });
@@ -30,14 +27,14 @@ export function DailyLogProvider({ children }: { children: React.ReactNode }) {
 
   const persist = useCallback((next: LogEntry[]) => {
     setEntries(next);
-    saveDailyLog(todayString(), next);
+    saveDailyLog(localDateString(), next);
   }, []);
 
   const addEntry = useCallback((entry: Omit<LogEntry, 'id' | 'date'>) => {
     const full: LogEntry = {
       ...entry,
       id: Date.now().toString(),
-      date: todayString(),
+      date: localDateString(),
     };
     persist([...entries, full]);
   }, [entries, persist]);
@@ -48,7 +45,7 @@ export function DailyLogProvider({ children }: { children: React.ReactNode }) {
 
   const clearLog = useCallback(() => {
     setEntries([]);
-    clearDailyLog(todayString());
+    clearDailyLog(localDateString());
   }, []);
 
   const totals = useMemo<DailyTotals>(() => {

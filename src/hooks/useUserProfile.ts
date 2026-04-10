@@ -1,10 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { UserProfile } from '../types';
 import { saveProfile as storageSave, loadProfile, setOnboardingComplete, isOnboardingComplete } from '../utils/storage';
-
-function todayString(): string {
-  return new Date().toISOString().split('T')[0];
-}
+import { localDateString } from '../utils/formatters';
 
 export function useUserProfile() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -28,14 +25,14 @@ export function useUserProfile() {
 
     if (!profile?.goalStartDate) {
       // First save (onboarding) — stamp goal start date and starting weight
-      profileToSave.goalStartDate = todayString();
+      profileToSave.goalStartDate = localDateString();
       profileToSave.goalStartWeightLbs = newProfile.weightLbs;
     } else if (
       profile.goalWeightLbs !== newProfile.goalWeightLbs ||
       profile.goalTimeframeWeeks !== newProfile.goalTimeframeWeeks
     ) {
       // Goal target or timeframe changed — restart the goal period
-      profileToSave.goalStartDate = todayString();
+      profileToSave.goalStartDate = localDateString();
       profileToSave.goalStartWeightLbs = newProfile.weightLbs;
     }
 
@@ -50,7 +47,7 @@ export function useUserProfile() {
     if (!profile) return;
     const updated: UserProfile = {
       ...profile,
-      goalStartDate: todayString(),
+      goalStartDate: localDateString(),
       goalStartWeightLbs: currentWeightLbs ?? profile.weightLbs,
     };
     await storageSave(updated);

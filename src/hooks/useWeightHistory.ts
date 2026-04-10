@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { WeightEntry } from '../types';
 import { loadWeightHistory, saveWeightHistory } from '../utils/storage';
+import { localDateString } from '../utils/formatters';
 
 export function useWeightHistory() {
   const [entries, setEntries] = useState<WeightEntry[]>([]);
@@ -15,7 +16,7 @@ export function useWeightHistory() {
   }, []);
 
   const addEntry = useCallback(async (weightLbs: number, note?: string) => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = localDateString();
     const newEntry: WeightEntry = {
       id: Date.now().toString(),
       date: today,

@@ -16,7 +16,7 @@ import { useMacroTargets } from '../../src/hooks/useMacroTargets';
 import { useWeightHistory } from '../../src/hooks/useWeightHistory';
 import { useGoalProgress } from '../../src/hooks/useGoalProgress';
 import { loadDailyLog } from '../../src/utils/storage';
-import { formatWeight } from '../../src/utils/formatters';
+import { formatWeight, localDateString } from '../../src/utils/formatters';
 import { colors } from '../../src/theme/colors';
 import { typography } from '../../src/theme/typography';
 import { spacing } from '../../src/theme/spacing';
@@ -43,7 +43,7 @@ function formatShortDate(dateStr: string): string {
 function addDays(dateStr: string, n: number): string {
   const d = new Date(dateStr + 'T00:00:00');
   d.setDate(d.getDate() + n);
-  return d.toISOString().split('T')[0];
+  return localDateString(d);
 }
 
 export default function ProgressScreen() {
@@ -60,7 +60,7 @@ export default function ProgressScreen() {
   // Load the past N days of calorie logs for the history section
   useEffect(() => {
     if (!profile?.goalStartDate) return;
-    const today = new Date().toISOString().split('T')[0];
+    const today = localDateString();
     const startDate = profile.goalStartDate;
 
     // Collect dates from goal start up to today (newest first, max 60 days for perf)
@@ -70,7 +70,7 @@ export default function ProgressScreen() {
       dates.push(cursor);
       const d = new Date(cursor + 'T00:00:00');
       d.setDate(d.getDate() - 1);
-      cursor = d.toISOString().split('T')[0];
+      cursor = localDateString(d);
     }
 
     (async () => {

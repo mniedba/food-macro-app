@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { UserProfile, LogEntry, WeightEntry } from '../types';
+import { localDateString } from './formatters';
 
 const STORAGE_KEYS = {
   USER_PROFILE: '@macrofuel/user_profile',
@@ -30,7 +31,7 @@ export async function clearAllData(): Promise<void> {
   await AsyncStorage.removeItem(STORAGE_KEYS.USER_PROFILE);
   await AsyncStorage.removeItem(STORAGE_KEYS.ONBOARDING_COMPLETE);
   await AsyncStorage.removeItem(STORAGE_KEYS.WEIGHT_HISTORY);
-  const today = new Date().toISOString().split('T')[0];
+  const today = localDateString();
   await AsyncStorage.removeItem(STORAGE_KEYS.DAILY_LOG_PREFIX + today);
 }
 
